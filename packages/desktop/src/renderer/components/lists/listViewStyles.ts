@@ -1,0 +1,163 @@
+import type { Theme } from '@jotbunker/shared'
+import { header, cssFont } from '../../styles/tokens'
+
+export type Styles = ReturnType<typeof createStyles>
+
+export function createStyles(colors: Theme['colors'], lv: Theme['listView'], fontSizeOverride?: number) {
+  const textSize = fontSizeOverride ?? lv.textFontSize
+  const inputSize = fontSizeOverride ?? lv.inputFontSize
+  return {
+    headerContainer: {
+      paddingTop: header.padding.top,
+      paddingBottom: header.padding.top,
+      paddingLeft: header.padding.horizontal,
+      paddingRight: header.padding.horizontal,
+      flexShrink: 0,
+      display: 'flex',
+      flexDirection: 'row' as const,
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    headerIcon: {
+      width: 52,
+      height: 52,
+      marginRight: 6,
+      opacity: 0.5,
+    },
+    headerTitleRow: {
+      display: 'flex',
+      flexDirection: 'row' as const,
+      alignItems: 'center',
+      gap: 6,
+    },
+    headerTitle: {
+      ...cssFont('DMSans-Black'),
+      fontSize: header.headerLabelSize,
+      letterSpacing: header.headerLabelSize * header.headerLabelLetterSpacing,
+      color: colors.textSecondary,
+    },
+    headerLabel: {
+      ...cssFont('DMMono-Light'),
+      fontSize: header.headerNumberSize,
+      color: colors.primary,
+      lineHeight: `${header.headerNumberSize * header.headerNumberLineHeight}px`,
+    },
+    divider: {
+      height: header.dividerHeight,
+      backgroundColor: colors.border,
+      marginTop: header.dividerMarginTop,
+      marginLeft: header.padding.horizontal,
+      marginRight: header.padding.horizontal,
+    },
+    listContainer: {
+      display: 'flex',
+      flexDirection: 'column' as const,
+      flex: 1,
+      minHeight: 0,
+    },
+    inputRow: {
+      paddingTop: lv.inputPadding.top,
+      paddingRight: lv.inputPadding.right,
+      paddingBottom: lv.inputPadding.bottom,
+      paddingLeft: lv.inputPadding.left,
+      borderBottom: `1px solid ${colors.border}`,
+      backgroundColor: colors.inputRowBg,
+    },
+    input: {
+      width: '100%',
+      backgroundColor: 'transparent',
+      color: colors.textPrimary,
+      ...cssFont('DMSans-Regular'),
+      fontSize: inputSize,
+      padding: 0,
+      paddingTop: 4,
+      paddingBottom: 4,
+    },
+    emptyRow: {
+      height: lv.emptyRowHeight,
+      borderBottom: `1px solid ${colors.borderUltraLight}`,
+    },
+    row: {
+      display: 'flex',
+      flexDirection: 'row' as const,
+      alignItems: 'center',
+      paddingTop: lv.rowPadding.top,
+      paddingRight: lv.rowPadding.right,
+      paddingBottom: lv.rowPadding.bottom,
+      paddingLeft: lv.rowPadding.left,
+      borderBottom: `1px solid ${colors.borderLight}`,
+      gap: lv.rowGap,
+      cursor: 'grab' as const,
+    },
+    dragHandle: {
+      color: colors.dragHandle,
+      fontSize: lv.dragHandleFontSize,
+      flexShrink: 0,
+      letterSpacing: lv.dragHandleLetterSpacing,
+      userSelect: 'none' as const,
+    },
+    checkbox: {
+      flexShrink: 0,
+      padding: 0,
+      display: 'flex',
+    },
+    checkInner: {
+      width: lv.checkboxSize,
+      height: lv.checkboxSize,
+      borderRadius: lv.checkboxRadius,
+      borderWidth: lv.checkboxBorderWidth,
+      borderStyle: 'solid' as const,
+      borderColor: colors.checkboxBorder,
+      backgroundColor: colors.checkboxBg,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    checkInnerChecked: {
+      backgroundColor: colors.checkboxCheckedBg,
+      borderColor: colors.checkboxCheckedBorder,
+    },
+    checkmark: {
+      fontSize: lv.checkmarkSize,
+      color: colors.primary,
+      lineHeight: `${lv.checkmarkSize + 2}px`,
+    },
+    itemText: {
+      flex: 1,
+      fontSize: textSize,
+      color: colors.textPrimary,
+      lineHeight: `${textSize * lv.textLineHeight}px`,
+      ...cssFont('DMSans-Regular'),
+      overflow: 'hidden' as const,
+      textOverflow: 'ellipsis' as const,
+      display: '-webkit-box',
+      WebkitLineClamp: 2,
+      WebkitBoxOrient: 'vertical' as const,
+      whiteSpace: 'pre-wrap' as const,
+    },
+    itemTextDone: {
+      textDecoration: 'line-through',
+      color: lv.textDoneColor,
+    },
+    editInput: {
+      background: 'transparent',
+      border: 'none',
+      outline: 'none',
+      padding: 0,
+      margin: 0,
+      display: 'block',
+      WebkitLineClamp: 'unset' as any,
+      WebkitBoxOrient: 'unset' as any,
+      textOverflow: 'unset' as any,
+      resize: 'none' as const,
+      overflow: 'hidden' as const,
+    },
+    deleteBtn: {
+      fontSize: lv.deleteFontSize,
+      color: colors.deleteVisible,
+      paddingLeft: lv.deletePaddingH,
+      paddingRight: lv.deletePaddingH,
+      flexShrink: 0,
+    },
+  }
+}

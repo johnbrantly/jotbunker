@@ -1,0 +1,180 @@
+/* ─── Reset ─── */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+  background: #0a0a0a;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Hide scrollbars globally, except list areas */
+::-webkit-scrollbar {
+  display: none;
+}
+.list-scroll::-webkit-scrollbar {
+  display: block;
+  width: 6px;
+}
+.list-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.list-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+.list-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* ─── Font Faces: DM Sans ─── */
+@font-face {
+  font-family: 'DMSans';
+  src: url('./fonts/DMSans_300Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'DMSans';
+  src: url('./fonts/DMSans_400Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'DMSans';
+  src: url('./fonts/DMSans_500Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'DMSans';
+  src: url('./fonts/DMSans_700Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'DMSans';
+  src: url('./fonts/DMSans_900Black.ttf') format('truetype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ─── Font Faces: DM Mono ─── */
+@font-face {
+  font-family: 'DMMono';
+  src: url('./fonts/DMMono_300Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'DMMono';
+  src: url('./fonts/DMMono_400Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'DMMono';
+  src: url('./fonts/DMMono_500Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ─── Focus resets ─── */
+button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  padding: 0;
+}
+
+button:focus-visible {
+  outline: 1px solid var(--accent-focus, rgba(200,168,50,0.4));
+  outline-offset: 2px;
+}
+
+input {
+  border: none;
+  outline: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+}
+
+/* ─── Hue Slider ─── */
+.hue-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 24px;
+  border-radius: 4px;
+  background: linear-gradient(to right,
+    hsl(0,80%,55%) 0%, hsl(30,80%,55%) 8.3%, hsl(60,80%,55%) 16.7%,
+    hsl(90,80%,55%) 25%, hsl(120,80%,55%) 33.3%, hsl(150,80%,55%) 41.7%,
+    hsl(180,80%,55%) 50%, hsl(210,80%,55%) 58.3%, hsl(240,80%,55%) 66.7%,
+    hsl(270,80%,55%) 75%, hsl(300,80%,55%) 83.3%, hsl(330,80%,55%) 91.7%,
+    hsl(360,80%,55%) 100%
+  );
+  outline: none;
+  cursor: pointer;
+}
+
+.hue-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 28px;
+  border-radius: 14px;
+  background: #fff;
+  border: 2px solid rgba(0,0,0,0.3);
+  cursor: pointer;
+}
+
+/* ─── Grayscale Slider ─── */
+.grayscale-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 24px;
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+}
+
+.grayscale-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 28px;
+  border-radius: 14px;
+  background: #fff;
+  border: 2px solid rgba(0,0,0,0.3);
+  cursor: pointer;
+}
+
+/* Pulsing animation for audio mode indicator */
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}

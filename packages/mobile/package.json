@@ -1,0 +1,60 @@
+{
+    "name":  "mobile",
+    "version":  "1.0.1",
+    "main":  "./index.js",
+    "scripts":  {
+                    "start":  "expo start",
+                    "android":  "expo run:android",
+                    "ios":  "expo run:ios",
+                    "web":  "expo start --web"
+                },
+    "dependencies":  {
+                         "@expo-google-fonts/dm-mono":  "^0.4.2",
+                         "@expo-google-fonts/dm-sans":  "^0.4.2",
+                         "@jotbunker/shared":  "*",
+                         "@react-native-async-storage/async-storage":  "2.2.0",
+                         "expo":  "~54.0.33",
+                         "expo-audio":  "~1.1.1",
+                         "expo-blur":  "~15.0.8",
+                         "expo-camera":  "~17.0.10",
+                         "expo-crypto":  "~15.0.8",
+                         "expo-dev-client":  "~6.0.20",
+                         "expo-device":  "~8.0.10",
+                         "expo-document-picker":  "~14.0.8",
+                         "expo-file-system":  "~19.0.21",
+                         "expo-font":  "~14.0.11",
+                         "expo-image-picker":  "~17.0.10",
+                         "expo-keep-awake":  "~15.0.8",
+                         "expo-linear-gradient":  "~15.0.8",
+                         "expo-local-authentication":  "~17.0.8",
+                         "expo-router":  "~6.0.23",
+                         "expo-splash-screen":  "~31.0.13",
+                         "expo-status-bar":  "~3.0.9",
+                         "react":  "19.1.0",
+                         "react-native":  "0.81.5",
+                         "react-native-draggable-flatlist":  "^4.0.3",
+                         "react-native-gesture-handler":  "~2.28.0",
+                         "react-native-quick-crypto":  "^0.7.0",
+                         "react-native-reanimated":  "~4.1.1",
+                         "react-native-safe-area-context":  "~5.6.0",
+                         "react-native-screens":  "~4.16.0",
+                         "react-native-svg":  "15.12.1",
+                         "tweetnacl":  "1.0.3",
+                         "zustand":  "5.0.11"
+                     },
+    "devDependencies":  {
+                            "@types/react":  "~19.1.0",
+                            "typescript":  "~5.9.2"
+                        },
+    "expo":  {
+                 "autolinking":  {
+                                     "android":  {
+                                                     "searchPaths":  [
+                                                                         "./.expo-autolink-overrides/node_modules",
+                                                                         "./node_modules"
+                                                                     ]
+                                                 }
+                                 }
+             },
+    "private":  true
+}

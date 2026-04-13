@@ -1,0 +1,31 @@
+appId: com.jotbunker.desktop
+productName: Jotbunker
+directories:
+  buildResources: resources
+extraResources:
+  - from: resources/icon.png
+    to: icon.png
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!build/*'
+  - '!electron.vite.config.*'
+  - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+win:
+  executableName: Jotbunker
+  target:
+    - nsis
+nsis:
+  include: resources/installer.nsh
+  oneClick: false
+  perMachine: true
+  allowToChangeInstallationDirectory: true
+  artifactName: ${productName}-${version}-setup.${ext}
+  shortcutName: ${productName}
+  uninstallDisplayName: ${productName}
+  createDesktopShortcut: always
+publish:
+  - provider: generic
+    url: https://jotbunker.com/updates
+  - provider: github
