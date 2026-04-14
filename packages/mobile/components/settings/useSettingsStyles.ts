@@ -41,6 +41,14 @@ export function useSettingsStyles() {
       letterSpacing: 1.5,
       opacity: 0.6,
     },
+    logoSubtext: {
+      fontFamily: `${fonts.sans}-Regular`,
+      fontSize: 11,
+      color: colors.textPrimary,
+      letterSpacing: 0.5,
+      opacity: 0.4,
+      marginTop: 2,
+    },
     title: {
       fontFamily: `${fonts.sans}-Black`,
       fontSize: dialog.titleFontSize + 12,

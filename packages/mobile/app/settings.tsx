@@ -93,10 +93,18 @@ export default function SettingsScreen() {
         <ScrollView style={{ width: '100%' }} showsVerticalScrollIndicator={false}>
           <View style={styles.logoArea}>
             <Image source={require('../assets/icon.png')} style={styles.logoIcon} />
-            <Text
-              style={styles.logoText}
-            >
+            <Text style={styles.logoText}>
               Jotbunker {APP_VERSION}
+            </Text>
+            <Text style={styles.logoSubtext}>© 2026 John Brantly</Text>
+            <Text style={styles.logoSubtext}>
+              Licensed under the GNU General Public License v3.0
+            </Text>
+            <Text style={styles.logoSubtext}>
+              This software comes with no warranty.
+            </Text>
+            <Text style={styles.logoSubtext}>
+              jotbunker.com · github.com/johnbrantly/jotbunker
             </Text>
           </View>
           <Text style={styles.title}>Settings</Text>

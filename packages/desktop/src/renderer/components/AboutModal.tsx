@@ -49,6 +49,13 @@ export default function AboutModal({ onClose }: Props) {
       color: colors.textPrimary,
       opacity: 0.6,
     },
+    subtext: {
+      ...cssFont('DMSans-Regular'),
+      fontSize: 11,
+      letterSpacing: 0.5,
+      color: colors.textPrimary,
+      opacity: 0.4,
+    },
     closeBtn: {
       marginTop: 8,
       paddingTop: dialog.btnPaddingV,
@@ -78,6 +85,10 @@ export default function AboutModal({ onClose }: Props) {
       <div style={styles.box}>
         <img src={jotsteadIcon} alt="Jotbunker" style={styles.icon} />
         <span style={styles.version}>Jotbunker {APP_VERSION}</span>
+        <span style={styles.subtext}>© 2026 John Brantly</span>
+        <span style={styles.subtext}>Licensed under the GNU General Public License v3.0</span>
+        <span style={styles.subtext}>This software comes with no warranty.</span>
+        <span style={styles.subtext}>jotbunker.com · github.com/johnbrantly/jotbunker</span>
         <button style={styles.closeBtn} onClick={onClose}>
           <span style={styles.closeText}>CLOSE</span>
         </button>
