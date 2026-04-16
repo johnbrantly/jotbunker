@@ -42,7 +42,7 @@ Clicking **LATER** at any stage dismisses the modal. The update stays available 
 
 **Help menu → "Disable Auto-Update on Startup"** (checkbox)
 
-When checked, a flag file is created at `%APPDATA%\Jotbunker\autoupdate-disabled.flag`. The app reads this file on startup — if it exists, the 3-second update check is skipped.
+When checked, a flag file is created at `%APPDATA%\JotBunker\autoupdate-disabled.flag`. The app reads this file on startup — if it exists, the 3-second update check is skipped.
 
 - Checking the box creates the flag file (disables startup check)
 - Unchecking deletes the flag file (re-enables startup check)
@@ -63,10 +63,10 @@ Centered overlay with blur backdrop, theme-aware styling matching other app dial
 | State | Title | Body | Buttons |
 |---|---|---|---|
 | Checking | Checking for Updates... | — | — |
-| Available | Update {version} Available | A new version of Jotbunker is available. | LATER / DOWNLOAD |
+| Available | Update {version} Available | A new version of JotBunker is available. | LATER / DOWNLOAD |
 | Downloading | Downloading {version} | Progress bar + percentage + bytes | LATER |
-| Downloaded | Update Ready | Restart Jotbunker to apply the update. | LATER / RESTART |
-| Up to date | You're Up to Date | Jotbunker {version} is the latest version. | OK (auto-dismiss 4s) |
+| Downloaded | Update Ready | Restart JotBunker to apply the update. | LATER / RESTART |
+| Up to date | You're Up to Date | JotBunker {version} is the latest version. | OK (auto-dismiss 4s) |
 | Error | Update Error | Error message | OK |
 
 ## Update providers

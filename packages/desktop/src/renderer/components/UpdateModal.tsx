@@ -177,10 +177,10 @@ export default function UpdateModal({ state, version, progress, errorMessage, on
   const message = (() => {
     switch (state) {
       case 'checking': return null
-      case 'available': return 'A new version of Jotbunker is available.'
+      case 'available': return 'A new version of JotBunker is available.'
       case 'downloading': return null
-      case 'downloaded': return 'Restart Jotbunker to apply the update.'
-      case 'up-to-date': return `Jotbunker ${version} is the latest version.`
+      case 'downloaded': return 'Restart JotBunker to apply the update.'
+      case 'up-to-date': return `JotBunker ${version} is the latest version.`
       case 'error': return errorMessage || 'An error occurred while checking for updates.'
     }
   })()

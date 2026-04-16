@@ -54,7 +54,7 @@ export default function ScanQrScreen() {
       <View style={styles.container}>
         <Text style={styles.permissionText}>
           {denied
-            ? 'Camera access was denied. Open Settings to enable it for Jotbunker.'
+            ? 'Camera access was denied. Open Settings to enable it for JotBunker.'
             : 'Camera access is needed to scan the pairing QR code.'}
         </Text>
         {denied ? (

@@ -1,6 +1,6 @@
 # Phone App
 
-iOS and Android app built with Expo. The capture side of Jotbunker — four tabs, offline-first, no account required.
+iOS and Android app built with Expo. The capture side of JotBunker:  four tabs, offline-first, no account required.
 
 ---
 

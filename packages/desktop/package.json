@@ -1,8 +1,8 @@
 {
     "name":  "@jotbunker/desktop",
     "productName":  "Jotbunker",
-    "version":  "1.0.1",
-    "description":  "Jotbunker",
+    "version":  "1.0.3",
+    "description":  "JotBunker",
     "author":  "John Brantly",
     "private":  true,
     "repository":  "https://github.com/johnbrantly/jotbunker",

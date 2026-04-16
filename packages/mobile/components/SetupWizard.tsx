@@ -87,7 +87,7 @@ export default function SetupWizard({ onComplete }: Props) {
             <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: previewColor }} />
           </View>
           <Text style={[styles.pairDesc, { color: colors.textSecondary, marginBottom: 16 }]}>
-            Jotbunker uses dark mode with a single accent color to theme the entire app. Pick one you like — you can always change it later in Settings.
+            JotBunker uses dark mode with a single accent color to theme the entire app. Pick one you like — you can always change it later in Settings.
           </Text>
           <View style={{ width: '100%', paddingHorizontal: 16 }}>
             <HueSlider value={hueVal} onChange={setHueVal} />

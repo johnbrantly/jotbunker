@@ -8,6 +8,7 @@ import {
   InputAccessoryView,
   Keyboard,
   Platform,
+  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
@@ -94,19 +95,22 @@ export default function SettingsScreen() {
           <View style={styles.logoArea}>
             <Image source={require('../assets/icon.png')} style={styles.logoIcon} />
             <Text style={styles.logoText}>
-              Jotbunker {APP_VERSION}
+              JotBunker v{APP_VERSION}
             </Text>
             <Text style={styles.logoSubtext}>© 2026 John Brantly</Text>
-            <Text style={styles.logoSubtext}>
-              Licensed under the GNU General Public License v3.0
-            </Text>
-            <Text style={styles.logoSubtext}>
-              This software comes with no warranty.
-            </Text>
-            <Text style={styles.logoSubtext}>
-              jotbunker.com · github.com/johnbrantly/jotbunker
-            </Text>
+            <Text style={styles.logoSubtext}>Licensed under the GNU GPL v3.0</Text>
+            <Text style={[styles.logoSubtext, { marginTop: 8 }]}>This software comes with no warranty.</Text>
+            <Text style={[styles.logoSubtext, { marginTop: 8 }]}>www.jotbunker.com</Text>
+            <Text style={[styles.logoSubtext, { marginTop: 12 }]}>Source code available:</Text>
+            <Text style={styles.logoSubtext}>github.com/johnbrantly/jotbunker</Text>
+            <TouchableOpacity
+              style={[styles.modifyBtn, { marginTop: 8 }]}
+              onPress={() => Linking.openURL('https://jotbunker.com/privacy')}
+            >
+              <Text style={styles.modifyBtnText}>VIEW PRIVACY POLICY</Text>
+            </TouchableOpacity>
           </View>
+          <View style={styles.divider} />
           <Text style={styles.title}>Settings</Text>
 
           <View style={styles.divider} />

@@ -6,7 +6,7 @@ Phone connects to computer over local Wi-Fi. Encrypted, peer-to-peer, no interne
 
 ## The sync concept
 
-Jotbunker sync is on-demand: the phone connects to the computer, both sides exchange their full state, conflicts are resolved via Last-Write-Wins, and then they're done. There is no real-time streaming of changes — each sync is a complete state exchange triggered by user action.
+JotBunker sync is on-demand: the phone connects to the computer, both sides exchange their full state, conflicts are resolved via Last-Write-Wins, and then they're done. There is no real-time streaming of changes — each sync is a complete state exchange triggered by user action.
 
 In the UI: DISCONNECTED → CONNECTING → CONNECTED. In the sync engine: `idle → connecting → key_exchange → handshake → syncing → docked → disconnected`. The engine phases are internal — the user sees connection status.
 

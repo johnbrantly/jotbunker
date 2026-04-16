@@ -248,7 +248,7 @@ export default function SetupWizard({ onComplete }: Props) {
       <div style={styles.container}>
         {renderDots()}
         <div style={styles.content}>
-          <img src={jbLogo} alt="Jotbunker" style={{ width: 80, height: 80, marginBottom: 24 }} />
+          <img src={jbLogo} alt="JotBunker" style={{ width: 80, height: 80, marginBottom: 24 }} />
           <span style={{
             ...cssFont('DMSans-Black'),
             fontSize: 28,
@@ -289,7 +289,7 @@ export default function SetupWizard({ onComplete }: Props) {
             textAlign: 'center',
             marginBottom: 16,
           }}>
-            Jotbunker uses dark mode with a single accent color to theme the entire app. Pick one you like — you can always change it later in Settings.
+            JotBunker uses dark mode with a single accent color to theme the entire app. Pick one you like — you can always change it later in Settings.
           </span>
           <AccentColorSection
             hueVal={hueVal}

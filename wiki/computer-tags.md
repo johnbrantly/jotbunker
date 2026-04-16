@@ -12,7 +12,7 @@ Tags are labels you create in the computer app's side panel. When you tag a jot,
 {tagRootPath}/{tagName}/
 ```
 
-The tag root path is user-configurable (defaults to `Documents/Jotbunker Tags/`). Each filed item gets a timestamped filename (e.g., `20260412143022-filename.ext`). Images are copied as-is, drawings are rasterized to PNG, audio stays as `.m4a`, files are copied, and text becomes a `.txt` file.
+The tag root path is user-configurable (defaults to `Documents/JotBunker Tags/`). Each filed item gets a timestamped filename (e.g., `20260412143022-filename.ext`). Images are copied as-is, drawings are rasterized to PNG, audio stays as `.m4a`, files are copied, and text becomes a `.txt` file.
 
 ## Tag management
 
@@ -47,7 +47,7 @@ Changes are batched — nothing is applied until you click:
 - **CANCEL** — discards all changes
 - **APPLY** — applies favorite toggles and deletions. Button shows deletion count when tags are marked (e.g., "APPLY (2 deletions)")
 
-Deleting a tag removes the label from Jotbunker but does **not** delete the filed content from your filesystem.
+Deleting a tag removes the label from JotBunker but does **not** delete the filed content from your filesystem.
 
 A **Quicksave** tag exists by default, is always favorited, and cannot be deleted.
 

@@ -9,7 +9,7 @@ function rebuildMenu(): void {
   if (!tray) return
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'Open Jotbunker',
+      label: 'Open JotBunker',
       click: () => showWindow(),
     },
     { type: 'separator' },
@@ -50,7 +50,7 @@ export function createTray(): Tray {
   }
 
   tray = new Tray(icon)
-  tray.setToolTip('Jotbunker')
+  tray.setToolTip('JotBunker')
 
   rebuildMenu()
 

@@ -84,7 +84,7 @@ Unlike the phone, no biometric authentication is required to edit Locked Lists c
 
 | Element | Type | Default | Description |
 |---|---|---|---|
-| TAG SAVE FOLDER | Path display + CHANGE button | `Documents\Jotbunker Tags` | Shows the current tag root path (right-to-left text direction with ellipsis for long paths). CHANGE opens a folder picker dialog |
+| TAG SAVE FOLDER | Path display + CHANGE button | `Documents\JotBunker Tags` | Shows the current tag root path (right-to-left text direction with ellipsis for long paths). CHANGE opens a folder picker dialog |
 
 This is the root directory where all [tagged content](computer-tags.md) is filed. Each tag creates a subfolder: `{tagRootPath}\{tagName}\`.
 
@@ -112,7 +112,7 @@ Three action buttons for backup and restore. See [Backup & Restore](computer-bac
 
 | Element | Type | Default | Description |
 |---|---|---|---|
-| DEBUG LOGGING | Toggle (OFF/ON) | OFF | Enables sync protocol logging. Writes to `%APPDATA%\Jotbunker\debug-logs\` |
+| DEBUG LOGGING | Toggle (OFF/ON) | OFF | Enables sync protocol logging. Writes to `%APPDATA%\JotBunker\debug-logs\` |
 
 See [Debug Logging](debug-logging.md) for details on log format and file locations.
 

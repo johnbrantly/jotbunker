@@ -14,7 +14,7 @@ The difference is the biometric gate. When you navigate to the Locked Lists tab,
 
 On mobile, the lock is a **biometric check** — it verifies you're the device owner before showing the data. The data itself is stored in AsyncStorage in plaintext, the same as regular lists. There is no separate encryption key for locked list content. The biometric gate is a UI barrier, not a cryptographic one.  
 
-On the computer, locked lists are not gated — the assumption is your computer is already a secured environment. The data is stored as plaintext JSON in `%APPDATA%\Jotbunker\stores\`.
+On the computer, locked lists are not gated — the assumption is your computer is already a secured environment. The data is stored as plaintext JSON in `%APPDATA%\JotBunker\stores\`.
 
 Data on the wire is always encrypted — locked list content syncs over the same NaCl-encrypted WebSocket as everything else (see [Security](security.md)).
 

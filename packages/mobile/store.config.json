@@ -1,0 +1,37 @@
+{
+  "configVersion": 0,
+  "apple": {
+    "categories": ["PRODUCTIVITY"],
+    "advisory": {
+      "alcoholTobaccoOrDrugUseOrReferences": "NONE",
+      "contests": "NONE",
+      "gamblingSimulated": "NONE",
+      "horrorOrFearThemes": "NONE",
+      "matureOrSuggestiveThemes": "NONE",
+      "medicalOrTreatmentInformation": "NONE",
+      "profanityOrCrudeHumor": "NONE",
+      "sexualContentGraphicAndNudity": "NONE",
+      "sexualContentOrNudity": "NONE",
+      "violenceCartoonOrFantasy": "NONE",
+      "violenceRealistic": "NONE",
+      "violenceRealisticProlongedGraphicOrSadistic": "NONE",
+      "gambling": false,
+      "unrestrictedWebAccess": false,
+      "kidsAgeBand": null,
+      "ageRatingOverride": "NONE",
+      "koreaAgeRatingOverride": "NONE"
+    },
+    "info": {
+      "en-US": {
+        "title": "JotBunker",
+        "subtitle": "Private notes. No cloud. Free.",
+        "description": "Jotbunker is a note-taking app for your phone and your computer. You jot on your phone. You work and store in your Bunker, a secure computer on your home network.\n\nSync happens over your local Wi-Fi when you choose. No cloud. No accounts. No subscription. No data ever leaves your network.\n\nFOUR WORKSPACES\n\n\u2022 Jots: Six numbered slots for quick capture. Each slot holds text, drawings, photos, voice recordings, and file attachments. Fill the slots, sync them to your computer, and clear them for the next round.\n\n\u2022 Lists: Todos and checklists. Rename categories, reorder items, check things off on either device. Changes merge when you reconnect.\n\n\u2022 Locked Lists: Gate codes, lock combos, membership numbers, safe combinations. Protected behind biometrics and auto-locked the moment you navigate away.\n\n\u2022 Scratchpads: Six freeform text areas. Start a thought on your computer, pick it up on your phone.\n\nHOW SYNC WORKS\n\nPair once by scanning a QR code. After that, tap Sync whenever you're on your home network. All traffic is encrypted end-to-end with NaCl. Nothing goes through an external server.\n\nFrom your computer, download jots as plain files (.txt, .jpg, .m4a, .pdf) into folders you choose. Use them with anything: search tools, scripts, a PKM system, or just File Explorer.\n\nFREE AND OPEN SOURCE\n\nJotbunker is 100% free. No ads, no in-app purchases, no premium tier. The source code is publicly available under the GPL-3.0 license at github.com/johnbrantly/jotbunker.\n\nThe free companion desktop app is available at jotbunker.com.",
+        "keywords": ["notepad","secure","offline","encrypted","local","sync","wifi","todo","checklist","memo","journal","capture","privacy"],
+        "promoText": "A private note-taking app that syncs over your home Wi-Fi. No cloud, no accounts, no subscription. 100% free and open source.",
+        "marketingUrl": "https://jotbunker.com",
+        "supportUrl": "https://jotbunker.com/support",
+        "privacyPolicyUrl": "https://jotbunker.com/privacy"
+      }
+    }
+  }
+}

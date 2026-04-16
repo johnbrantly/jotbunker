@@ -35,12 +35,13 @@ export default function AboutModal({ onClose }: Props) {
       display: 'flex',
       flexDirection: 'column' as const,
       alignItems: 'center',
-      gap: 16,
+      gap: 2,
     },
     icon: {
       width: 72,
       height: 72,
       borderRadius: 14,
+      marginBottom: 6,
     },
     version: {
       ...cssFont('DMSans-Bold'),
@@ -48,6 +49,7 @@ export default function AboutModal({ onClose }: Props) {
       letterSpacing: 1.5,
       color: colors.textPrimary,
       opacity: 0.6,
+      marginBottom: 4,
     },
     subtext: {
       ...cssFont('DMSans-Regular'),
@@ -83,12 +85,14 @@ export default function AboutModal({ onClose }: Props) {
   return (
     <div style={styles.overlay}>
       <div style={styles.box}>
-        <img src={jotsteadIcon} alt="Jotbunker" style={styles.icon} />
-        <span style={styles.version}>Jotbunker {APP_VERSION}</span>
+        <img src={jotsteadIcon} alt="JotBunker" style={styles.icon} />
+        <span style={styles.version}>JotBunker v{APP_VERSION}</span>
         <span style={styles.subtext}>© 2026 John Brantly</span>
-        <span style={styles.subtext}>Licensed under the GNU General Public License v3.0</span>
-        <span style={styles.subtext}>This software comes with no warranty.</span>
-        <span style={styles.subtext}>jotbunker.com · github.com/johnbrantly/jotbunker</span>
+        <span style={styles.subtext}>Licensed under the GNU GPL v3.0</span>
+        <span style={{...styles.subtext, marginTop: 8}}>This software comes with no warranty.</span>
+        <a href="https://www.jotbunker.com" target="_blank" style={{...styles.subtext, marginTop: 8, cursor: 'pointer'}}>www.jotbunker.com</a>
+        <span style={{...styles.subtext, marginTop: 8}}>Source code available:</span>
+        <a href="https://github.com/johnbrantly/jotbunker" target="_blank" style={{...styles.subtext, cursor: 'pointer'}}>github.com/johnbrantly/jotbunker</a>
         <button style={styles.closeBtn} onClick={onClose}>
           <span style={styles.closeText}>CLOSE</span>
         </button>

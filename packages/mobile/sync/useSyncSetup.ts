@@ -208,7 +208,7 @@ function buildMobilePlatform(
         if (dockState === 'docking') {
           Alert.alert(
             'Could Not Connect to Computer',
-            'Please check that Jotbunker is running on your computer and that the network is available.',
+            'Please check that JotBunker is running on your computer and that the network is available.',
           );
         }
         setDockState('undocked');

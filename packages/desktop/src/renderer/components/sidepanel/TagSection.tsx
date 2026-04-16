@@ -174,7 +174,7 @@ export default function TagSection({
           <img src={navTag} alt="Tag" style={{ width: 28, height: 28, objectFit: 'contain', opacity: 0.7 }} />
           <span style={styles.sectionHeader}>TAGS</span>
           <InfoIcon
-            tooltip="Each tag specifies a subfolder where your Jotbunker data can be permanently saved to your computer. Base folder can be changed in Settings."
+            tooltip="Each tag specifies a subfolder where your JotBunker data can be permanently saved to your computer. Base folder can be changed in Settings."
             popover="below"
             colors={colors}
           />

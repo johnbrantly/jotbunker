@@ -342,7 +342,7 @@ export default function SettingsModal({ onClose, onOpenSyncLog }: Props) {
   return (
     <div style={styles.overlay}>
       <div style={styles.box}>
-        <div style={{ width: '100%', overflow: 'auto', maxHeight: sp.maxHeight - 80 }}>
+        <div className="settings-scroll" style={{ width: '100%', overflowY: 'auto', maxHeight: sp.maxHeight - 80 }}>
           <span style={styles.title}>SETTINGS</span>
 
           <NetworkSyncSection

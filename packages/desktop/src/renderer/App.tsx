@@ -47,7 +47,7 @@ export default function App() {
 
   // Log app started
   useEffect(() => {
-    useConsoleStore.getState().log('Jotbunker started')
+    useConsoleStore.getState().log('JotBunker started')
   }, [])
 
   // Listen for menu IPC events + send stored sync port on startup

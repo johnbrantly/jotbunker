@@ -70,7 +70,7 @@ export function createWindow(): BrowserWindow {
   const centered = state.x === -1 && state.y === -1
   const iconPath = join(__dirname, '../../resources/icon.png')
   mainWindow = new BrowserWindow({
-    title: 'Jotbunker',
+    title: 'JotBunker',
     icon: nativeImage.createFromPath(iconPath),
     width: state.width,
     height: state.height,

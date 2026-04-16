@@ -45,7 +45,7 @@ Settings modal accessed via the gear icon. Ten sections: Network Sync, Accent Co
 
 ## Data locations
 
-All app data lives in `%APPDATA%\Jotbunker\`:
+All app data lives in `%APPDATA%\JotBunker\`:
 
 | Path | Contents |
 |---|---|
@@ -55,8 +55,8 @@ All app data lives in `%APPDATA%\Jotbunker\`:
 | `system-messages.log` | Rolling 50-entry app log |
 
 User-facing exports go to:
-- `Documents/Jotbunker Downloads/` — downloaded jot content
-- User-configured tag root path (defaults to `Documents/Jotbunker Tags/`) — tagged/filed content in `{tagRootPath}/{tagName}/`
+- `Documents/JotBunker Downloads/` — downloaded jot content
+- User-configured tag root path (defaults to `Documents/JotBunker Tags/`) — tagged/filed content in `{tagRootPath}/{tagName}/`
 
 ---
 

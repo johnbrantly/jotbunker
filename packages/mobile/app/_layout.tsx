@@ -16,15 +16,30 @@ import SetupWizard from '../components/SetupWizard';
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
-    'DMSans-Regular': require('@expo-google-fonts/dm-sans/400Regular/DMSans_400Regular.ttf'),
-    'DMSans-Medium': require('@expo-google-fonts/dm-sans/500Medium/DMSans_500Medium.ttf'),
-    'DMSans-Bold': require('@expo-google-fonts/dm-sans/700Bold/DMSans_700Bold.ttf'),
-    'DMSans-Black': require('@expo-google-fonts/dm-sans/900Black/DMSans_900Black.ttf'),
-    'DMMono-Light': require('@expo-google-fonts/dm-mono/300Light/DMMono_300Light.ttf'),
-    'DMMono-Regular': require('@expo-google-fonts/dm-mono/400Regular/DMMono_400Regular.ttf'),
-    'DMMono-Medium': require('@expo-google-fonts/dm-mono/500Medium/DMMono_500Medium.ttf'),
-  });
+  // Font loading is platform-split on purpose:
+  //   iOS  -> useFonts() hook loading from node_modules via require().
+  //           This is the path that has been shipping successfully on iOS for
+  //           months. Do NOT change it without an intentional migration.
+  //   Android -> fonts are embedded as native Android resources via the
+  //           expo-font config plugin in app.config.ts. Metro's asset bundling
+  //           was silently dropping hoisted-node_modules fonts on Android
+  //           production builds (the 2026-04-16 splash-hang incident); native
+  //           embedding sidesteps that entirely.
+  // Passing an empty object to useFonts on Android makes it a no-op that
+  // returns [true] immediately, so the fontsLoaded gate below resolves.
+  const [fontsLoaded] = useFonts(
+    Platform.OS === 'ios'
+      ? {
+          'DMSans-Regular': require('@expo-google-fonts/dm-sans/400Regular/DMSans_400Regular.ttf'),
+          'DMSans-Medium': require('@expo-google-fonts/dm-sans/500Medium/DMSans_500Medium.ttf'),
+          'DMSans-Bold': require('@expo-google-fonts/dm-sans/700Bold/DMSans_700Bold.ttf'),
+          'DMSans-Black': require('@expo-google-fonts/dm-sans/900Black/DMSans_900Black.ttf'),
+          'DMMono-Light': require('@expo-google-fonts/dm-mono/300Light/DMMono_300Light.ttf'),
+          'DMMono-Regular': require('@expo-google-fonts/dm-mono/400Regular/DMMono_400Regular.ttf'),
+          'DMMono-Medium': require('@expo-google-fonts/dm-mono/500Medium/DMMono_500Medium.ttf'),
+        }
+      : {}
+  );
 
   // WebSocket sync
   useSyncSetup();
@@ -86,14 +101,15 @@ export default function RootLayout() {
     }
   }, [segments, isUnlocked, lock, lockedListsLockEnabled, lockedListsLockTimeout]);
 
-  // Hide splash once fonts loaded AND hydrated AND app lock resolved
+  // Hide splash once fonts loaded (iOS) / immediate (Android) AND store is
+  // hydrated AND app lock resolved
   useEffect(() => {
     if (fontsLoaded && hydrated && !(appLockEnabled && appLocked)) {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, hydrated, appLockEnabled, appLocked]);
 
-  // Don't render any Text until fonts are loaded
+  // Don't render until fonts are loaded (iOS) and store is hydrated
   if (!fontsLoaded || !hydrated) {
     return null;
   }
@@ -128,9 +144,9 @@ export default function RootLayout() {
       {appLockEnabled && appLocked && (
         <AuthGate
           onUnlock={handleAppUnlock}
-          promptMessage="Unlock Jotbunker"
+          promptMessage="Unlock JotBunker"
           title="APP LOCKED"
-          description="Authenticate to unlock Jotbunker"
+          description="Authenticate to unlock JotBunker"
           noEnrollmentDescription={Platform.OS === 'ios'
             ? 'Configure Face ID, Touch ID, or a device passcode in iOS Settings'
             : 'Configure fingerprint, face unlock, or a PIN/pattern in device Settings'}

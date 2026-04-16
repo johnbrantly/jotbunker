@@ -39,7 +39,7 @@ Bottom line: an iCloud restore recovers all text data (lists, scratchpad, settin
 
 ## Computer (Windows)
 
-All data lives in `%APPDATA%\Jotbunker\`:
+All data lives in `%APPDATA%\JotBunker\`:
 
 ### Store data
 
@@ -70,8 +70,8 @@ Plaintext JSON files, read/written by the main process via IPC.
 
 | Path | Contents |
 |---|---|
-| `Documents/Jotbunker Downloads/` | Downloaded jot content (timestamped folders) |
-| `{tagRootPath}/{tagName}/` (defaults to `Documents/Jotbunker Tags/`) | Tagged/filed content (text, images, files, audio, drawings) |
+| `Documents/JotBunker Downloads/` | Downloaded jot content (timestamped folders) |
+| `{tagRootPath}/{tagName}/` (defaults to `Documents/JotBunker Tags/`) | Tagged/filed content (text, images, files, audio, drawings) |
 
 ---
 

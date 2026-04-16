@@ -47,7 +47,7 @@ After a fresh phone install, the phone's jots start empty. Jot content does not 
 
 ## Downloads
 
-From the computer, you can download a jot's content to your filesystem. Text becomes a `.txt` file, drawings become PNG images, photos are copied, files are copied, and audio recordings are saved as `.m4a`. Downloaded files go to `Documents/Jotbunker Downloads/` by default, or to a tagged folder if you file them with a [tag](computer-tags.md).
+From the computer, you can download a jot's content to your filesystem. Text becomes a `.txt` file, drawings become PNG images, photos are copied, files are copied, and audio recordings are saved as `.m4a`. Downloaded files go to `Documents/JotBunker Downloads/` by default, or to a tagged folder if you file them with a [tag](computer-tags.md).
 
 ---
 

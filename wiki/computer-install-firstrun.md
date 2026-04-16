@@ -2,16 +2,16 @@
 
 ## Download
 
-Download the latest `Jotbunker-{version}-setup.exe` from the [Downloads](https://jotbunker.com) page.
+Download the latest `JotBunker-{version}-setup.exe` from the [Downloads](https://jotbunker.com) page.
 
 ## Install
 
-The installer requires **administrator privileges**. This is intentional — Jotbunker needs to create a Windows Firewall rule so your phone can connect to the sync server over your local network. A system you don't have admin access to isn't a bunker.
+The installer requires **administrator privileges**. This is intentional — JotBunker needs to create a Windows Firewall rule so your phone can connect to the sync server over your local network. A system you don't have admin access to isn't a bunker.
 
 The installer presents a standard wizard:
 
 1. **Welcome** — click Next
-2. **Install location** — defaults to `C:\Program Files\Jotbunker`. You can change this if needed.
+2. **Install location** — defaults to `C:\Program Files\JotBunker`. You can change this if needed.
 3. **Firewall rule** — the installer asks whether to create a Windows Firewall inbound rule for the sync server. Click **Yes** (recommended) — this lets your phone connect to the computer over your local network. If you decline, Windows will show its own firewall prompt on first launch instead.
 4. **Install** — files are copied, desktop shortcut is placed
 
@@ -19,9 +19,9 @@ On **upgrades** (installing a new version over an existing one), the firewall pr
 
 ### What the installer does
 
-- Installs the app to `C:\Program Files\Jotbunker`
+- Installs the app to `C:\Program Files\JotBunker`
 - Creates a desktop shortcut and Start Menu entry
-- Asks to create a Windows Firewall inbound rule allowing `Jotbunker.exe` on TCP (first install only — skipped on upgrades if rule exists)
+- Asks to create a Windows Firewall inbound rule allowing `JotBunker.exe` on TCP (first install only — skipped on upgrades if rule exists)
 - Registers in Add/Remove Programs for clean uninstall
 
 ### Why administrator is required
@@ -43,14 +43,14 @@ Introduction screen. Click **GET STARTED**.
 Pick your theme using the hue and grayscale sliders. Default is desaturated steel blue (hue 205, grayscale 75). You can always change this later in [Settings](computer-settings.md).
 
 ### Step 3 — Save Folders
-Configure the **Tag Save Folder** — the root directory where tagged content is filed. Defaults to `Documents\Jotbunker Tags`. Click **CHANGE** to pick a different folder, or **SKIP SETUP** to use the default.
+Configure the **Tag Save Folder** — the root directory where tagged content is filed. Defaults to `Documents\JotBunker Tags`. Click **CHANGE** to pick a different folder, or **SKIP SETUP** to use the default.
 
 ### Step 4 — Network
 Configure the sync server:
 
 - **Adapter** — select the network interface your phone will connect through (typically your Wi-Fi adapter)
 - **Port** — the TCP port the sync server listens on (default 8080)
-- **QR Code** — a pairing code is generated automatically. Open the Jotbunker phone app, go to Settings → Network Settings → Scan QR Code, and scan this code to pair your devices
+- **QR Code** — a pairing code is generated automatically. Open the JotBunker phone app, go to Settings → Network Settings → Scan QR Code, and scan this code to pair your devices
 
 Click **FINISH** to complete setup. The app starts and the sync server begins listening.
 
@@ -67,13 +67,13 @@ Click **FINISH** to complete setup. The app starts and the sync server begins li
 
 ## Uninstall
 
-Uninstall via **Settings → Apps → Jotbunker** (Add/Remove Programs). The uninstaller:
+Uninstall via **Settings → Apps → JotBunker** (Add/Remove Programs). The uninstaller:
 
 - Removes the app and desktop/Start Menu shortcuts
 - Removes the Windows Firewall rule
 - Cleans up the auto-updater cache
-- **Asks** whether to remove your app data and settings (`%APPDATA%\Jotbunker`)
-- **Preserves** your backups (`%LOCALAPPDATA%\Jotbunker\backups`), Tag Save Folder, and Downloads — delete these manually if you no longer need them
+- **Asks** whether to remove your app data and settings (`%APPDATA%\JotBunker`)
+- **Preserves** your backups (`%LOCALAPPDATA%\JotBunker\backups`), Tag Save Folder, and Downloads — delete these manually if you no longer need them
 
 ---
 

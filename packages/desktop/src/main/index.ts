@@ -20,8 +20,8 @@ if (!gotLock) {
   app.whenReady().then(() => {
     dialog.showMessageBoxSync({
       type: 'info',
-      title: 'Jotbunker',
-      message: 'Jotbunker is already running.',
+      title: 'JotBunker',
+      message: 'JotBunker is already running.',
       detail: 'Check your system tray for the existing instance.',
     })
     app.quit()
@@ -108,7 +108,7 @@ app.whenReady().then(() => {
       label: 'Help',
       submenu: [
         {
-          label: 'About Jotbunker',
+          label: 'About JotBunker',
           click: () => {
             const win = getWindow()
             if (win) win.webContents.send('menu:open-about')

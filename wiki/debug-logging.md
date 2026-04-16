@@ -10,7 +10,7 @@ On either device, go to Settings and toggle **Debug Logging** on. On the compute
 
 ## Where logs go
 
-Computer writes to `%APPDATA%\Jotbunker\debug-logs\`:
+Computer writes to `%APPDATA%\JotBunker\debug-logs\`:
 
 - **`desktop-sync.log`** — events from the computer's perspective (connection, merge, phase transitions)
 - **`phone-sync.log`** — events from the phone's perspective (sent to computer over the encrypted sync channel)

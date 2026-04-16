@@ -1,6 +1,6 @@
-# Jotbunker
+# JotBunker
 
-Jotbunker has both phone and computer apps for capture, lists, and the stuff you need to remember offline.  No cloud, no accounts, no subscription.
+JotBunker has both phone and computer apps for capture, lists, and the stuff you need to remember offline.  No cloud, no accounts, no subscription.
 
 Phone captures fast — text, voice, images, drawings. Computer connects to the phone over your local network, syncing lists, notes, and media.  Tagging system and permanent storage on your hard drive as simple raw text, image, and audio files.  Search or integrate with knowledge retrieval systems on your own terms. Nothing leaves your Wi-Fi.
 
@@ -68,7 +68,7 @@ Computer exports encrypted or plaintext backup files. Restore from file. No clou
 Resizable log panel in the computer's side panel. Rolling 50-entry feed of saves, downloads, sync events, backups, and errors. Persists to `system-messages.log`.
 
 ### [Debug Logging](debug-logging.md)
-Toggle in settings. Writes sync protocol logs to `%APPDATA%\Jotbunker\debug-logs\` — computer and phone logs side by side.
+Toggle in settings. Writes sync protocol logs to `%APPDATA%\JotBunker\debug-logs\` — computer and phone logs side by side.
 
 ### [Auto-Updates](computer-auto-updates.md)
 Computer app checks for updates on launch. Download and install are user-initiated. Disable via Help menu.

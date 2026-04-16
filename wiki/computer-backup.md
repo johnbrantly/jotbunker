@@ -31,11 +31,11 @@ A plaintext backup is a JSON file with the same payload, unencrypted. Useful for
 
 ## Where backups are saved
 
-Backup files are written to `%LOCALAPPDATA%\Jotbunker\backups\` by default. Filenames are timestamped:
+Backup files are written to `%LOCALAPPDATA%\JotBunker\backups\` by default. Filenames are timestamped:
 - `backup-2026-04-12T14-32-05-000Z.json` — plaintext
 - `secure-backup-2026-04-12T14-32-05-000Z.json` — encrypted
 
-This is separate from the app's main data directory (`%APPDATA%\Jotbunker\`). The uninstaller gives the option to keep or delete the `%LOCALAPPDATA%\Jotbunker\` directory.
+This is separate from the app's main data directory (`%APPDATA%\JotBunker\`). The uninstaller gives the option to keep or delete the `%LOCALAPPDATA%\JotBunker\` directory.
 
 ## Restore
 

@@ -29,18 +29,18 @@ Computer backups can be encrypted with a user-provided password using AES-GCM wi
 ## What is NOT encrypted at rest
 
 - All mobile store data (AsyncStorage) — plaintext in the app sandbox
-- All computer store data (`%APPDATA%\Jotbunker\stores/`) — plaintext JSON files
+- All computer store data (`%APPDATA%\JotBunker\stores/`) — plaintext JSON files
 - Computer jot media held in memory (not cached to disk)
 - Pairing secret — plaintext on both devices
 
 ## Threat model
 
-Jotbunker protects against:
+JotBunker protects against:
 - **Network eavesdropping** — all sync traffic is encrypted
 - **Unauthorized device pairing** — pairing secret required
 - **Casual access to locked lists** — biometric/password gate
 
-Jotbunker does **not** protect against:
+JotBunker does **not** protect against:
 - **Physical device access** with debugging tools (data is plaintext at rest)
 - **Compromised OS** (jailbreak, malware with file access)
 - **Brute force on backup passwords** (PBKDF2 iteration count is 100k, below current recommendations)

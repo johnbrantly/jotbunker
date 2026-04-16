@@ -27,12 +27,12 @@ The panel holds a maximum of **50 messages**. When a new message is logged and t
 
 ## Persistence
 
-Every message is also written to disk at `%APPDATA%\Jotbunker\system-messages.log` via IPC. The log file maintains the same 50-entry rolling limit. The CLEAR button only clears the in-memory display — it does not delete the log file.
+Every message is also written to disk at `%APPDATA%\JotBunker\system-messages.log` via IPC. The log file maintains the same 50-entry rolling limit. The CLEAR button only clears the in-memory display — it does not delete the log file.
 
 ## What gets logged
 
 ### App lifecycle
-- `Jotbunker started` — on app launch
+- `JotBunker started` — on app launch
 
 ### Jot downloads
 - `Downloading...` — when a jot download is initiated
