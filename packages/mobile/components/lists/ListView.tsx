@@ -114,7 +114,20 @@ export default function ListView({
       {/* Header */}
       <HeaderTray>
         <View style={styles.headerContainer}>
-          <TouchableOpacity activeOpacity={1} onPress={() => inputRef.current?.focus()} style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => {
+              // Android has no on-screen keyboard-dismiss control in gesture-nav
+              // mode. Repurpose header-tap to dismiss instead of focus when
+              // keyboard is up; still works as a focus shortcut on iOS.
+              if (Platform.OS === 'android') {
+                Keyboard.dismiss();
+              } else {
+                inputRef.current?.focus();
+              }
+            }}
+            style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}
+          >
             <Image
               source={sectionLabel === 'LOCKED LISTS'
                 ? require('../../assets/nav/nav-lockedLists.png')
@@ -180,7 +193,13 @@ export default function ListView({
               {contentHeight < availableHeight && (
                 <TouchableOpacity
                   style={{ flex: 1 }}
-                  onPress={() => inputRef.current?.focus()}
+                  onPress={() => {
+                    if (Platform.OS === 'android') {
+                      Keyboard.dismiss();
+                    } else {
+                      inputRef.current?.focus();
+                    }
+                  }}
                   activeOpacity={1}
                 />
               )}

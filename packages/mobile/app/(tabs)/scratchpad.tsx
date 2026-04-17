@@ -5,6 +5,8 @@ import {
   Platform,
   StyleSheet,
   Image,
+  Keyboard,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAvoidingView } from 'react-native';
@@ -85,6 +87,10 @@ export default function ScratchpadScreen() {
   }), [colors]);
 
   return (
+    <Pressable
+      onPress={Platform.OS === 'android' ? Keyboard.dismiss : undefined}
+      style={{ flex: 1 }}
+    >
     <SafeAreaView style={styles.container} edges={[]}>
       {/* Header */}
       <HeaderTray>
@@ -131,5 +137,6 @@ export default function ScratchpadScreen() {
         onCancel={() => setShowConfirm(false)}
       />
     </SafeAreaView>
+    </Pressable>
   );
 }

@@ -13,6 +13,15 @@ import { fonts, modeStrip as d, INPUT_MODES } from '@jotbunker/shared';
 import type { InputModeId } from '@jotbunker/shared';
 import { useTheme } from '../hooks/useTheme';
 
+/**
+ * ModeStrip — Jots-only input mode selector (TEXT / DRAW / IMAGE / FILE / AUDIO).
+ *
+ * Sizing: the row sizes tightly around its content using `paddingVertical`
+ * (from `modeStrip.paddingVertical` in the theme). Previously the row had a
+ * fixed `height: 44` with content centered inside, leaving ~14 px of dead
+ * space top and bottom — that dead space was what forced the negative
+ * marginBottom hack when composed inside the Jots StripTray.
+ */
 interface Props {
   activeMode: InputModeId;
   onSelect: (mode: InputModeId) => void;
@@ -54,7 +63,7 @@ export default function ModeStrip({ activeMode, onSelect, contentInfo }: Props) 
   const dynamicStyles = useMemo(() => StyleSheet.create({
     container: {
       flexDirection: 'row',
-      height: d.height,
+      paddingVertical: d.paddingVertical,
       flexShrink: 0,
     },
   }), [colors]);
@@ -69,7 +78,14 @@ export default function ModeStrip({ activeMode, onSelect, contentInfo }: Props) 
             style={styles.btn}
             onPress={() => onSelect(mode.id)}
           >
-            <RecDot icon={mode.icon} color={isActive ? colors.primary : colors.textDim} isActive={isActive} dimOpacity={isActive || Platform.OS === 'android' ? 1 : 0.25} />
+            <RecDot
+              icon={mode.icon}
+              color={isActive ? colors.primary : colors.textDim}
+              isActive={isActive}
+              // Android renders opacity differently on inactive animated text;
+              // force 1.0 there to match iOS's visual weight for inactive icons.
+              dimOpacity={isActive || Platform.OS === 'android' ? 1 : 0.25}
+            />
             <DisplayText
               style={[
                 styles.label,
@@ -82,7 +98,11 @@ export default function ModeStrip({ activeMode, onSelect, contentInfo }: Props) 
               const info = contentInfo?.[mode.id];
               const hasData = typeof info === 'number' ? info > 0 : !!info;
               const label = typeof info === 'number' && info > 0 ? `(${info})` : '✓';
-              return <Text style={[styles.indicator, { color: hasData ? colors.accentFocus : 'transparent' }]}>{label}</Text>;
+              return (
+                <Text style={[styles.indicator, { color: hasData ? colors.accentFocus : 'transparent' }]}>
+                  {label}
+                </Text>
+              );
             })()}
           </TouchableOpacity>
         );
@@ -91,7 +111,6 @@ export default function ModeStrip({ activeMode, onSelect, contentInfo }: Props) 
   );
 }
 
-// Static layout styles (no color dependencies)
 const styles = StyleSheet.create({
   btn: {
     flex: 1,

@@ -80,6 +80,12 @@ export default function CategoryStrip({
       <View style={styles.inner}>
         {categories.map((cat, slot) => {
           const isActive = slot === activeSlot;
+          // Display-only truncation: pill rows need every slot to render at
+          // the same visual size (grid-of-buttons mental model). Labels over
+          // 7 chars get chopped rather than auto-shrunk (AFSTF is buggy on
+          // Android anyway). The stored label on `cat.label` is untouched,
+          // so headers/sync/backup still see the full value.
+          const displayLabel = cat.label.length > 7 ? cat.label.slice(0, 7) : cat.label;
           return (
             <TouchableOpacity
               key={slot}
@@ -92,11 +98,9 @@ export default function CategoryStrip({
                     <DisplayText
                       style={[styles.label, isActive && styles.labelActive]}
                       numberOfLines={1}
-                      adjustsFontSizeToFit
-                      minimumFontScale={0.8}
-                      ellipsizeMode="tail"
+                      ellipsizeMode="clip"
                     >
-                      {cat.label}
+                      {displayLabel}
                     </DisplayText>
                     <Text style={[styles.checkmark, { color: isActive ? colors.navActiveText : d.labelInactiveColor }]}>✓</Text>
                   </View>
@@ -104,11 +108,9 @@ export default function CategoryStrip({
                   <DisplayText
                     style={[styles.label, isActive && styles.labelActive]}
                     numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.8}
-                    ellipsizeMode="tail"
+                    ellipsizeMode="clip"
                   >
-                    {cat.label}
+                    {displayLabel}
                   </DisplayText>
                 )}
               </View>

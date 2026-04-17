@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useRef } from 'react';
 import {
   View,
   Text,
@@ -39,31 +39,6 @@ export default function SettingsScreen() {
   const colorRef = useRef<AccentColorSaveHandle>(null);
   const debugRef = useRef<DebugLoggingSaveHandle>(null);
   const catsRef = useRef<CategoryEditorsSaveHandle>(null);
-
-  // Keyboard handling
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const [catInputFocused, setCatInputFocused] = useState(false);
-  const catBlurTimer = useRef<ReturnType<typeof setTimeout>>();
-
-  useEffect(() => {
-    if (Platform.OS !== 'ios') return;
-    const showSub = Keyboard.addListener('keyboardWillShow', (e) => {
-      setKeyboardHeight(e.endCoordinates.height);
-    });
-    const hideSub = Keyboard.addListener('keyboardWillHide', () => {
-      setKeyboardHeight(0);
-    });
-    return () => { showSub.remove(); hideSub.remove(); };
-  }, []);
-
-  const handleCatFocus = useCallback(() => {
-    clearTimeout(catBlurTimer.current);
-    setCatInputFocused(true);
-  }, []);
-
-  const handleCatBlur = useCallback(() => {
-    catBlurTimer.current = setTimeout(() => setCatInputFocused(false), 100);
-  }, []);
 
   const handleSave = () => {
     networkRef.current?.save();
@@ -117,8 +92,8 @@ export default function SettingsScreen() {
 
           <NetworkSyncSection
             ref={networkRef}
-            onCatFocus={handleCatFocus}
-            onCatBlur={handleCatBlur}
+            onCatFocus={() => {}}
+            onCatBlur={() => {}}
           />
           <View style={styles.divider} />
 
@@ -136,8 +111,8 @@ export default function SettingsScreen() {
 
           <CategoryEditors
             ref={catsRef}
-            onCatFocus={handleCatFocus}
-            onCatBlur={handleCatBlur}
+            onCatFocus={() => {}}
+            onCatBlur={() => {}}
           />
 
           <View style={styles.divider} />
@@ -157,16 +132,6 @@ export default function SettingsScreen() {
         </View>
       </View>
     </BlurView>
-    {Platform.OS === 'ios' && catInputFocused && keyboardHeight > 0 && (
-      <View style={[styles.accessory, { position: 'absolute', bottom: keyboardHeight, left: 0, right: 0 }]}>
-        <TouchableOpacity
-          style={styles.doneBtn}
-          onPress={() => Keyboard.dismiss()}
-        >
-          <Text style={styles.doneBtnText}>DONE</Text>
-        </TouchableOpacity>
-      </View>
-    )}
     </>
   );
 }

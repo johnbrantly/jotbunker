@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Keyboard, Platform, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useListsStore } from '../../stores/listsStore';
 import { useTheme } from '../../hooks/useTheme';
@@ -28,6 +28,10 @@ export default function ListsScreen() {
   }), [colors]);
 
   return (
+    <Pressable
+      onPress={Platform.OS === 'android' ? Keyboard.dismiss : undefined}
+      style={{ flex: 1 }}
+    >
     <SafeAreaView style={styles.container} edges={[]}>
       <ListView
         sectionLabel="LISTS"
@@ -43,5 +47,6 @@ export default function ListsScreen() {
         getUncheckedCount={getUncheckedCount}
       />
     </SafeAreaView>
+    </Pressable>
   );
 }

@@ -41,7 +41,7 @@ export function buildTheme(hue: number, grayscale: number = 0) {
     primary: primaryHex,
     textPrimary: textPrimaryHex,
     textSecondary: _rgba(pR, pG, pB, 0.5),
-    textDim: _rgba(pR, pG, pB, 0.25),
+    textDim: _rgba(pR, pG, pB, 0.55),
     textUltraDim: _rgba(pR, pG, pB, 0.18),
     destructive: '#e84040',
     border: _rgba(pR, pG, pB, 0.08),
@@ -49,7 +49,7 @@ export function buildTheme(hue: number, grayscale: number = 0) {
     borderUltraLight: _rgba(pR, pG, pB, 0.04),
     navBg: primaryHex,
     navActiveText: '#0a0a0a',
-    navInactiveText: 'rgba(10,10,10,0.35)',
+    navInactiveText: 'rgba(10,10,10,0.8)',
     navGearColor: 'rgba(10,10,10,0.3)',
     dialogBg: '#161614',
     dialogBorder: _rgba(pR, pG, pB, 0.15),
@@ -66,8 +66,21 @@ export function buildTheme(hue: number, grayscale: number = 0) {
     accentFocus: _rgba(pR, pG, pB, 0.4),
     trayBorder: _rgba(pR, pG, pB, 0.22),
     trayBorderBright: _rgba(pR, pG, pB, 0.45),
+
+    // ─── NEW: tray surface & divider ───
+    // Solid replacement for the old trayGradientTop/Bottom pair. Solid color
+    // renders identically on iOS and Android (the old gradient banded on
+    // Android when the Jots tray grew tall). Alpha 0.1 visually sits between
+    // the old gradient endpoints (0.04 top → 0.15 bottom).
+    trayBg: _rgba(pR, pG, pB, 0.1),
+    // Divider color used by <StripDivider /> between stacked strip rows.
+    trayDivider: _rgba(pR, pG, pB, 0.15),
+
+    // ─── LEGACY (kept for back-compat; no longer consumed by StripTray) ───
+    // Safe to delete once a codebase-wide search confirms no other consumers.
     trayGradientTop: _rgba(pR, pG, pB, 0.04),
     trayGradientBottom: _rgba(pR, pG, pB, 0.15),
+
     success: '#4ade80',
     successDark: '#052e16',
     warning: '#facc15',
@@ -89,8 +102,13 @@ export function buildTheme(hue: number, grayscale: number = 0) {
       dotMarginTop: 1,
     },
 
+    // ─── CHANGED: modeStrip sizing ───
+    // Was `height: 44` with content centered → ~14 px dead space top & bottom
+    // that forced `marginBottom: -12` on the consumer (Jots). Now the row
+    // sizes tightly around its content via `paddingVertical`.
     modeStrip: {
-      height: 44, gap: 6, fontSize: 10, letterSpacing: 0.1,
+      paddingVertical: 10,
+      gap: 6, fontSize: 10, letterSpacing: 0.1,
       iconFontSize: 14, indicatorWidth: 20, indicatorHeight: 2,
       dotSize: 4,
       dotColor: _rgba(pR, pG, pB, 0.4),
@@ -171,12 +189,12 @@ export function buildTheme(hue: number, grayscale: number = 0) {
     },
 
     categoryStrip: {
-      paddingVertical: 8, innerPaddingHorizontal: 4,
-      btnGap: 3, btnPaddingV: 4, btnPaddingH: 2,
-      pillPaddingV: 8, pillPaddingH: 10, pillRadius: 20, pillBorderWidth: 1.5,
+      paddingVertical: 8, innerPaddingHorizontal: 2,
+      btnGap: 3, btnPaddingV: 4, btnPaddingH: 1,
+      pillPaddingV: 8, pillPaddingH: 4, pillRadius: 20, pillBorderWidth: 1.5,
       pillBorderColor: _rgba(pR, pG, pB, 0.15),
-      labelFontSize: 10, labelLetterSpacing: 0.06,
-      labelInactiveColor: _rgba(pR, pG, pB, 0.35),
+      labelFontSize: 10, labelLetterSpacing: 0.03,
+      labelInactiveColor: _rgba(pR, pG, pB, 0.55),
       countFontSize: 10,
       countColor: _rgba(pR, pG, pB, 0.35),
       countMarginTop: 1,

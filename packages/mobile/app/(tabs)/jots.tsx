@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet, Platform } from 'react-native';
+import { View, Text, Image, StyleSheet, Keyboard, Platform, Pressable } from 'react-native';
 import { DisplayText } from '../../components/DisplayText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { fonts, header } from '@jotbunker/shared';
-import { JOTS, type Category } from '@jotbunker/shared';
+import { JOTS } from '@jotbunker/shared';
 import { useTheme } from '../../hooks/useTheme';
 import { useJotsStore } from '../../stores/jotsStore';
 import { useSettingsStore } from '../../stores/settingsStore';
@@ -15,6 +15,7 @@ import AudioRecorder from '../../components/AudioRecorder';
 import ModeStrip from '../../components/ModeStrip';
 import CategoryStrip from '../../components/CategoryStrip';
 import StripTray from '../../components/StripTray';
+import StripDivider from '../../components/StripDivider';
 import HeaderTray from '../../components/HeaderTray';
 import DotMenu from '../../components/DotMenu';
 import ConfirmDialog from '../../components/ConfirmDialog';
@@ -87,12 +88,6 @@ export default function JotsScreen() {
       lineHeight: header.headerNumberSize * header.headerNumberLineHeight,
       textAlign: 'center',
     },
-    divider: {
-      height: header.dividerHeight,
-      backgroundColor: colors.border,
-      marginTop: header.dividerMarginTop,
-      marginHorizontal: header.padding.horizontal,
-    },
     contentArea: {
       flex: 1,
       minHeight: 0,
@@ -100,6 +95,10 @@ export default function JotsScreen() {
   }), [colors]);
 
   return (
+    <Pressable
+      onPress={Platform.OS === 'android' ? Keyboard.dismiss : undefined}
+      style={{ flex: 1 }}
+    >
     <SafeAreaView style={styles.container} edges={[]}>
       {/* Header */}
       <HeaderTray>
@@ -170,6 +169,7 @@ export default function JotsScreen() {
         )}
       </View>
 
+      {/* Bottom strip tray — two stacked rows with a shared divider. */}
       <StripTray>
         <ModeStrip
           activeMode={activeMode}
@@ -182,7 +182,7 @@ export default function JotsScreen() {
             audio: jot?.recordings?.length ?? 0,
           }}
         />
-        <View style={{ borderTopWidth: 1, borderTopColor: colors.border }} />
+        <StripDivider />
         <CategoryStrip
           categories={jotCategories}
           activeSlot={activeJotId - 1}
@@ -190,7 +190,11 @@ export default function JotsScreen() {
           getUncheckedCount={() => 0}
           getHasContent={(slot) => {
             const s = jots[slot + 1];
-            return !!s?.text || s?.drawing != null || (s?.images?.length ?? 0) > 0 || (s?.files?.length ?? 0) > 0 || (s?.recordings?.length ?? 0) > 0;
+            return !!s?.text
+              || s?.drawing != null
+              || (s?.images?.length ?? 0) > 0
+              || (s?.files?.length ?? 0) > 0
+              || (s?.recordings?.length ?? 0) > 0;
           }}
         />
       </StripTray>
@@ -204,5 +208,6 @@ export default function JotsScreen() {
         onCancel={() => setShowConfirm(false)}
       />
     </SafeAreaView>
+    </Pressable>
   );
 }

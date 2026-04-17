@@ -9,7 +9,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   name: 'JotBunker',
   slug: 'jotbunker',
-  version: '1.0.3',
+  version: '1.0.4',
   orientation: 'portrait',
   icon: './assets/icon.png',
   userInterfaceStyle: 'dark',

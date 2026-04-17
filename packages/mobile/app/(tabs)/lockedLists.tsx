@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Keyboard, Platform, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLockedListsStore } from '../../stores/lockedListsStore';
 import { useSettingsStore } from '../../stores/settingsStore';
@@ -53,6 +53,10 @@ export default function LockedListsScreen() {
   }
 
   return (
+    <Pressable
+      onPress={Platform.OS === 'android' ? Keyboard.dismiss : undefined}
+      style={{ flex: 1 }}
+    >
     <SafeAreaView style={styles.container} edges={[]}>
       <ListView
         sectionLabel="LOCKED LISTS"
@@ -70,5 +74,6 @@ export default function LockedListsScreen() {
         getUncheckedCount={getUncheckedCount}
       />
     </SafeAreaView>
+    </Pressable>
   );
 }

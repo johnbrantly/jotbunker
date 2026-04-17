@@ -1,7 +1,7 @@
 {
     "name":  "@jotbunker/desktop",
     "productName":  "Jotbunker",
-    "version":  "1.0.3",
+    "version":  "1.0.4",
     "description":  "JotBunker",
     "author":  "John Brantly",
     "private":  true,

@@ -61,7 +61,6 @@ export default function TextEditor({ value, onChangeText, fontSize, placeholder 
     () =>
       StyleSheet.create({
         input: {
-          flex: 1,
           width: '100%',
           backgroundColor: 'transparent',
           color: colors.textPrimary,
@@ -113,18 +112,30 @@ export default function TextEditor({ value, onChangeText, fontSize, placeholder 
   return (
     <>
       {editing ? (
-        <TextInput
-          ref={inputRef}
-          style={styles.input}
-          value={value}
-          onChangeText={onChangeText}
-          placeholder={resolvedPlaceholder}
-          placeholderTextColor={colors.textUltraDim}
-          multiline
-          textAlignVertical="top"
-          selectionColor={colors.primary}
-          inputAccessoryViewID={Platform.OS === 'ios' ? INPUT_ACCESSORY_ID : undefined}
-        />
+        // ScrollView with keyboardShouldPersistTaps="never" makes any tap on
+        // empty space below the TextInput (inside the ScrollView but outside
+        // the TextInput) dismiss the keyboard automatically. TextInput sizes
+        // to its content via minHeight + natural growth instead of flex:1,
+        // so there IS an "empty space" region below typed text to tap into.
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="never"
+        >
+          <TextInput
+            ref={inputRef}
+            style={styles.input}
+            value={value}
+            onChangeText={onChangeText}
+            placeholder={resolvedPlaceholder}
+            placeholderTextColor={colors.textUltraDim}
+            multiline
+            textAlignVertical="top"
+            selectionColor={colors.primary}
+            scrollEnabled={false}
+            inputAccessoryViewID={Platform.OS === 'ios' ? INPUT_ACCESSORY_ID : undefined}
+          />
+        </ScrollView>
       ) : (
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }}>
           <GestureDetector gesture={tap}>

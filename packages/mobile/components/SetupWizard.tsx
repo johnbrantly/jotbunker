@@ -61,7 +61,7 @@ export default function SetupWizard({ onComplete }: Props) {
           />
           <DisplayText style={[styles.title, { color: colors.textPrimary }]}>JOTBUNKER</DisplayText>
           <Text style={[styles.tagline, { color: colors.textSecondary }]}>
-            Jot on your phone. Work and store in your Bunker.{'\n'}Sync over local Wi-Fi with no cloud, no accounts, and no subscription.
+            Jot on your Phone.{'\n'}Work and store in your Bunker.{'\n'}Sync over local Wi-Fi with no cloud, no accounts, and no subscription.
           </Text>
         </View>
         <View style={styles.btnRow}>
