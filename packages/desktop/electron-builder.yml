@@ -16,6 +16,9 @@ win:
   executableName: Jotbunker
   target:
     - nsis
+  signtoolOptions:
+    sign: ./scripts/win-sign.js
+    publisherName: John Brantly
 nsis:
   include: resources/installer.nsh
   oneClick: false

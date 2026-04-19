@@ -1,5 +1,18 @@
 # JotBunker Changelog
 
+## [v1.0.5] - 2026-04-19
+
+- Add Microsoft Azure Artifact Signing to Windows installer
+- Fix github issue #2 Files downloading to Jotbunker Downloads errantly
+- Fix Jots - audio recording while connected to computer causes issues
+- Fix Jots - scrolling for 3 or more audio recordings on phone
+- Fix Jots to Computer transfer - picked-file URI sandboxing (image + file attachments)
+- Fix Jots to Computer transfer - sync all - would miss finger drawings
+- Added mutex while jot data transferred-cached for sync and download buttons
+- Jots - File - use same pattern for delete as audio - red x instead of tap and hold
+- Add 1024x1024 adaptive-icon for android
+- usesCleartextTraffic: true in app.config.ts for android to fix sync connection
+
 ## [v1.0.4] - 2026-04-17
 
 - Prep for android submission:

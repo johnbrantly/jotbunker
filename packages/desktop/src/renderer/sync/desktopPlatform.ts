@@ -24,10 +24,12 @@ import { useConsoleStore } from '../stores/consoleStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { useSyncConfirmStore } from '../stores/syncConfirmStore'
 import { useSyncHistoryStore } from '../stores/syncHistoryStore'
+import { useSaveStatusStore } from '../stores/saveStatusStore'
 import { processJotMetadata, processSingleJotFiles } from '../hooks/sync/jotMetadata'
 import type { DownloadResult } from '../hooks/sync/jotMetadata'
 import type { BinaryQueue } from '../hooks/sync/binaryQueue'
 import { summarizeItems } from './syncUtils'
+import { rasterizeDrawing } from '../utils/rasterizeDrawing'
 
 export type SyncStatus = 'disconnected' | 'connected'
 
@@ -278,11 +280,29 @@ export function buildDesktopPlatform(deps: DesktopPlatformDeps): DesktopPlatform
 
     handleDownloadComplete(data) {
       const r = data as DownloadResult
-      if (r.success) {
-        const jotLabel = r.jotCount === 1 ? 'JOT' : `${r.jotCount} JOTS`
-        useConsoleStore.getState().log(`${jotLabel} \u2192 ${r.path}`)
-      } else {
+      // Always release the save mutex — success or failure, this is the
+      // terminal signal for the DOWNLOAD ALL write flow.
+      useSaveStatusStore.getState().setSaving(false)
+      if (!r.success) {
         useConsoleStore.getState().log(`Download failed: ${r.error}`)
+        return
+      }
+      const jotLabel = r.jotCount === 1 ? 'JOT' : `${r.jotCount} JOTS`
+      useConsoleStore.getState().log(`${jotLabel} \u2192 ${r.path}`)
+
+      // Drawings aren't transferred via jot_download_response (jot.drawing on
+      // the phone is a JSON string, not a file). Pull each from our local
+      // jotsStore (kept fresh via metadata sync) and write them client-side
+      // with the same rasterize flow that Save-to-Tag uses.
+      const jotIds = r.jotIds ?? []
+      const jots = useJotsStore.getState().jots
+      for (const jotId of jotIds) {
+        const jot = jots[jotId]
+        if (!jot?.drawing) continue
+        const drawingPngBase64 = rasterizeDrawing(jot.drawing)
+        if (!drawingPngBase64) continue
+        window.electronAPI.saveDownloadedDrawing({ baseDir: r.path, jotId, drawingPngBase64 })
+          .catch((e: unknown) => console.warn('[download] saveDrawing failed', jotId, e))
       }
     },
 
@@ -300,6 +320,8 @@ export function buildDesktopPlatform(deps: DesktopPlatformDeps): DesktopPlatform
         const emptyJots: Record<number, any> = {}
         for (let i = 1; i <= 6; i++) emptyJots[i] = { text: '', textUpdatedAt: 0, drawing: null, drawingUpdatedAt: 0, images: [], recordings: [], files: [] }
         useJotsStore.setState({ jots: emptyJots, jotMetaFetched: {}, jotMetaLoading: {} })
+        // Release the save mutex — any DOWNLOAD ALL in flight is dead now.
+        useSaveStatusStore.getState().setSaving(false)
         if (hasBeenDocked) {
           hasBeenDocked = false
         }

@@ -11,6 +11,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as Crypto from 'expo-crypto';
 import { fonts } from '@jotbunker/shared';
 import { useTheme } from '../hooks/useTheme';
+import { copyToSandbox } from '../utils/copyToSandbox';
 import type { FileAttachment } from '../stores/jotsStore';
 
 interface Props {
@@ -97,6 +98,14 @@ export default function FileAttach({ files, onAdd, onRemove }: Props) {
       fontSize: 10,
       color: colors.textSecondary,
     },
+    removeBtn: {
+      padding: 4,
+      marginLeft: 4,
+    },
+    removeText: {
+      fontSize: 18,
+      color: 'rgba(232,64,64,0.5)',
+    },
     addRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -123,15 +132,24 @@ export default function FileAttach({ files, onAdd, onRemove }: Props) {
 
   const pickFile = async () => {
     try {
-      const result = await DocumentPicker.getDocumentAsync({
-        copyToCacheDirectory: true,
-      });
+      const result = await DocumentPicker.getDocumentAsync({});
       if (result.canceled || !result.assets?.[0]) return;
       const asset = result.assets[0];
+      const ext = asset.name.includes('.')
+        ? asset.name.split('.').pop()!.toLowerCase()
+        : 'bin';
 
-      // Use the cache URI directly — copyToCacheDirectory already copied it
-      // to a persistent location within the app's cache directory
-      onAdd(asset.uri, asset.name, asset.mimeType || 'application/octet-stream', asset.size || 0);
+      // Copy into app sandbox (Paths.document/jot-files/). More durable than
+      // DocumentPicker's copyToCacheDirectory — cache can be evicted and some
+      // provider URIs aren't fully sandbox-readable via File.base64() later.
+      try {
+        const sandboxUri = copyToSandbox(asset.uri, 'jot-files', ext);
+        onAdd(sandboxUri, asset.name, asset.mimeType || 'application/octet-stream', asset.size || 0);
+      } catch (e) {
+        console.warn('[FileAttach] copy-to-sandbox failed:', e);
+        // Fallback: raw URI; user still sees the file, sync may fail later.
+        onAdd(asset.uri, asset.name, asset.mimeType || 'application/octet-stream', asset.size || 0);
+      }
     } catch (err) {
       console.warn('[FileAttach] pickFile failed:', err);
     }
@@ -168,21 +186,20 @@ export default function FileAttach({ files, onAdd, onRemove }: Props) {
         return (
           <TouchableOpacity
             style={styles.row}
-            onPress={() => Alert.alert('File Preview', 'File preview coming soon.')}
-            onLongPress={() => Alert.alert(
-              'Delete file?',
-              `Remove "${item.fileName}" from this jot?`,
-              [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Delete', style: 'destructive', onPress: () => onRemove(item.id) },
-              ]
-            )}
+            onPress={() => Alert.alert('File Preview', 'File preview not currently supported.')}
           >
             <Text style={styles.rowIcon}>{fileIcon(item.mimeType)}</Text>
             <View style={styles.rowInfo}>
               <Text style={styles.rowName} numberOfLines={1}>{item.fileName}</Text>
               <Text style={styles.rowMeta}>{formatSize(item.size)}</Text>
             </View>
+            <TouchableOpacity
+              style={styles.removeBtn}
+              onPress={() => onRemove(item.id)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.removeText}>×</Text>
+            </TouchableOpacity>
           </TouchableOpacity>
         );
       }}

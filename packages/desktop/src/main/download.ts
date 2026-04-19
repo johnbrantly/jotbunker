@@ -1,13 +1,9 @@
 import { app } from 'electron'
 import { join } from 'path'
-import { mkdirSync, writeFileSync, copyFileSync, existsSync, readFileSync, readdirSync } from 'fs'
+import { mkdirSync, writeFileSync, readFileSync } from 'fs'
 import type { JotDownloadResponse } from '@jotbunker/shared'
 import { syncLog } from '@jotbunker/shared'
 import { safePath } from './safePath'
-
-function getDownloadDir(): string {
-  return join(app.getPath('documents'), 'Jotbunker Downloads')
-}
 
 function pad(n: number): string {
   return n.toString().padStart(3, '0')
@@ -20,9 +16,21 @@ export interface DownloadResult {
   error?: string
 }
 
-export function writeJotFiles(response: JotDownloadResponse, downloadDir?: string): DownloadResult {
+/**
+ * Write the full contents of jots from a jot_download_response into
+ * {tagRootPath}/{tagName}/<timestamp>/JotN/...
+ * Both tagRootPath and tagName are required. No silent fallbacks.
+ */
+export function writeJotFiles(
+  response: JotDownloadResponse,
+  tagRootPath: string,
+  tagName: string,
+): DownloadResult {
+  if (!tagRootPath || !tagName) {
+    return { success: false, path: '', jotCount: 0, error: 'writeJotFiles: tagRootPath and tagName are required' }
+  }
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-  const baseDir = join(downloadDir || getDownloadDir(), timestamp)
+  const baseDir = join(tagRootPath, sanitizeForFs(tagName), timestamp)
 
   try {
     mkdirSync(baseDir, { recursive: true })
@@ -37,11 +45,10 @@ export function writeJotFiles(response: JotDownloadResponse, downloadDir?: strin
         writeFileSync(join(jotDir, 'text.txt'), jot.text, 'utf-8')
       }
 
-      // Drawing (base64 PNG)
-      if (jot.drawing) {
-        const buf = Buffer.from(jot.drawing, 'base64')
-        writeFileSync(join(jotDir, 'drawing.png'), buf)
-      }
+      // Drawing intentionally omitted here. `jot.drawing` is a JSON string on
+      // the phone, not a base64 PNG, so the phone sets it to null in the payload.
+      // The renderer writes `Jot<N>/drawing.png` client-side after this function
+      // completes via the `download:save-drawing` IPC (see fileHandlers.ts).
 
       // Images
       for (let i = 0; i < jot.images.length; i++) {
@@ -58,6 +65,14 @@ export function writeJotFiles(response: JotDownloadResponse, downloadDir?: strin
         const m4aPath = join(jotDir, `audio_${pad(i + 1)}.m4a`)
         const buf = Buffer.from(rec.data, 'base64')
         writeFileSync(m4aPath, buf)
+      }
+
+      // File attachments — previously dropped silently by this function
+      for (let i = 0; i < (jot.files || []).length; i++) {
+        const f = jot.files[i]
+        const safe = sanitizeForFs(f.fileName || `file_${pad(i + 1)}`)
+        const buf = Buffer.from(f.data, 'base64')
+        writeFileSync(join(jotDir, `file_${pad(i + 1)}-${safe}`), buf)
       }
     }
 
@@ -163,10 +178,6 @@ export interface TaskExportResult {
 
 // ── Tag-based filing ──
 
-function getTagDir(tagRootPath?: string): string {
-  return tagRootPath || join(app.getPath('documents'), 'Jotbunker Tags')
-}
-
 function sanitizeForFs(name: string): string {
   return name.replace(/[/\\:*?"<>|]/g, '').trim() || 'untitled'
 }
@@ -195,8 +206,10 @@ export function writeTagFile(data: {
   filename: string
   text: string
 }): TagSaveResult {
-  const tagRoot = getTagDir(data.tagRootPath || undefined)
-  const tagDir = safePath(tagRoot, sanitizeForFs(data.tagName))
+  if (!data.tagRootPath) {
+    return { success: false, path: '', error: 'writeTagFile: tagRootPath is required' }
+  }
+  const tagDir = safePath(data.tagRootPath, sanitizeForFs(data.tagName))
   const ts = formatTimestamp()
   const safeName = sanitizeForFs(data.filename)
   const filePath = safePath(tagDir, `${ts}-${safeName}.txt`)
@@ -221,8 +234,10 @@ export function writeTagFileWithMedia(data: {
   recordings?: { base64: string }[]
   files?: { base64: string; fileName: string }[]
 }): TagSaveResult {
-  const tagRoot = getTagDir(data.tagRootPath || undefined)
-  const tagDir = safePath(tagRoot, sanitizeForFs(data.tagName))
+  if (!data.tagRootPath) {
+    return { success: false, path: '', error: 'writeTagFileWithMedia: tagRootPath is required' }
+  }
+  const tagDir = safePath(data.tagRootPath, sanitizeForFs(data.tagName))
   const ts = formatTimestamp()
   const safeName = sanitizeForFs(data.filename)
   let fileCount = 0
@@ -279,78 +294,12 @@ export function writeTagFileWithMedia(data: {
   }
 }
 
-// ── Single image save ──
-
-export function saveSingleImage(
-  cachedPath: string,
-  format: string,
-  downloadDir?: string,
-  filename?: string,
-): { success: boolean; path: string; error?: string } {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-  const dir = downloadDir || getDownloadDir()
-  const ext = format || 'jpg'
-  const baseName = filename || `image.${ext}`
-  const filePath = join(dir, `${timestamp}-${baseName}`)
-
-  try {
-    mkdirSync(dir, { recursive: true })
-    if (existsSync(cachedPath)) {
-      copyFileSync(cachedPath, filePath)
-      return { success: true, path: filePath }
-    }
-    return { success: false, path: filePath, error: 'Cached file not found' }
-  } catch (err: unknown) {
-    return { success: false, path: filePath, error: err instanceof Error ? err.message : String(err) }
+export function writeTaskExport(sections: TaskExportSection[], downloadDir: string): TaskExportResult {
+  if (!downloadDir) {
+    return { success: false, paths: [], error: 'writeTaskExport: downloadDir is required' }
   }
-}
-
-// ── Single audio save ──
-
-export function saveSingleAudio(
-  cachedPath: string,
-  downloadDir?: string,
-  filename?: string,
-): { success: boolean; path: string; error?: string } {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-  const dir = downloadDir || getDownloadDir()
-  const baseName = filename || 'audio.m4a'
-  const filePath = join(dir, `${timestamp}-${baseName}`)
-
-  try {
-    mkdirSync(dir, { recursive: true })
-    if (existsSync(cachedPath)) {
-      copyFileSync(cachedPath, filePath)
-      return { success: true, path: filePath }
-    }
-    return { success: false, path: filePath, error: 'Cached file not found' }
-  } catch (err: unknown) {
-    return { success: false, path: filePath, error: err instanceof Error ? err.message : String(err) }
-  }
-}
-
-// ── Single text save ──
-
-export function saveTextFile(
-  text: string,
-  downloadDir?: string,
-  filename?: string,
-): { success: boolean; path: string; error?: string } {
-  const dir = downloadDir || getDownloadDir()
-  const filePath = join(dir, filename || 'text.txt')
-
-  try {
-    mkdirSync(dir, { recursive: true })
-    writeFileSync(filePath, text, 'utf-8')
-    return { success: true, path: filePath }
-  } catch (err: unknown) {
-    return { success: false, path: filePath, error: err instanceof Error ? err.message : String(err) }
-  }
-}
-
-export function writeTaskExport(sections: TaskExportSection[], downloadDir?: string): TaskExportResult {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-  const dir = join(downloadDir || getDownloadDir(), 'task exports')
+  const dir = join(downloadDir, 'task exports')
   const paths: string[] = []
 
   try {

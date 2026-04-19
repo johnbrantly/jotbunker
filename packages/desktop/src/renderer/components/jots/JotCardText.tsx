@@ -5,12 +5,12 @@ interface JotCardTextProps {
   jotId: number
   selectedTag: { label: string } | undefined
   onEditText: () => void
-  onSaveText: (text: string, downloadDir: string, filename: string) => Promise<void>
+  onSaveText: (text: string, filename: string) => Promise<void>
   styles: Record<string, React.CSSProperties>
 }
 
 export default function JotCardText({ text, jotId, selectedTag, onEditText, onSaveText, styles }: JotCardTextProps) {
-  const tagLabel = selectedTag?.label || 'Quicksave'
+  const tagLabel = selectedTag?.label ?? ''
 
   return (
     <>
@@ -30,9 +30,8 @@ export default function JotCardText({ text, jotId, selectedTag, onEditText, onSa
         <button
           style={styles.smallTagBtn}
           onClick={async () => {
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-            const filename = `${timestamp}-text.txt`
-            await onSaveText(text, '', filename)
+            // writeTagFile in main appends timestamp prefix and .txt suffix, so we pass a bare name
+            await onSaveText(text, `jot${jotId}-text`)
           }}
           title={`Download to ${tagLabel}`}
         >

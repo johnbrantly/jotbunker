@@ -31,9 +31,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Folder picker
   pickFolder: (defaultPath?: string) => ipcRenderer.invoke('dialog:pick-folder', defaultPath || ''),
 
-  // Request jot download
-  requestJotDownload: (jotIds: number[], downloadPath?: string) => {
-    ipcRenderer.send('sync:request-download', { jotIds, downloadPath: downloadPath || '' })
+  // Request jot download. Both tagRootPath and tagName are required — destination is
+  // always {tagRootPath}/{tagName}/<timestamp>/JotN/... — no silent fallbacks.
+  requestJotDownload: (jotIds: number[], tagRootPath: string, tagName: string) => {
+    ipcRenderer.send('sync:request-download', { jotIds, tagRootPath, tagName })
   },
 
   // Download complete
@@ -60,13 +61,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.send('sync:request-file', req)
   },
 
-  // Save single text
-  saveTextFile: (data: { text: string; downloadDir: string; filename?: string }) =>
-    ipcRenderer.invoke('download:save-text', data) as Promise<{ success: boolean; path: string; error?: string }>,
-
   // Save base64 data to tag folder
   saveBase64File: (data: { base64: string; format: string; tagRootPath: string; tagName: string; filename: string }) =>
     ipcRenderer.invoke('download:save-base64', data) as Promise<{ success: boolean; path: string; error?: string }>,
+
+  // Save rasterized drawing PNG into a DOWNLOAD ALL output's Jot<N>/drawing.png
+  saveDownloadedDrawing: (data: { baseDir: string; jotId: number; drawingPngBase64: string }) =>
+    ipcRenderer.invoke('download:save-drawing', data) as Promise<{ success: boolean; path?: string; error?: string }>,
 
   // Menu events
   onMenuOpenSettings: (cb: () => void) => {

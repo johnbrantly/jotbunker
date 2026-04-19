@@ -28,7 +28,8 @@ let phoneDeviceId: string | null = null
 let desktopKeyPair: nacl.BoxKeyPair | null = null
 let sharedKey: Uint8Array | null = null
 let pairingSecret = ''
-const pendingDownloadQueue: string[] = []
+interface PendingDownload { tagRootPath: string; tagName: string }
+const pendingDownloadQueue: PendingDownload[] = []
 
 export function setPairingSecret(secret: string): void {
   pairingSecret = secret
@@ -61,6 +62,10 @@ function resetConnection(): void {
   phoneDeviceId = null
   desktopKeyPair = null
   sharedKey = null
+  // Any queued DOWNLOAD ALL targets belong to a session that's gone. Leaving them
+  // here would mis-route the next session's jot_download_response to the previous
+  // session's tagRootPath/tagName.
+  pendingDownloadQueue.length = 0
   notifyRenderer('sync:status', { connectionState: 'disconnected', deviceId: null })
 }
 
@@ -109,9 +114,15 @@ function handleMessage(raw: string): void {
     }
 
     case 'jot_download_response': {
-      const downloadPath = pendingDownloadQueue.shift() ?? ''
-      const result = writeJotFiles(msg, downloadPath)
-      notifyRenderer('sync:download-complete', result)
+      const pending = pendingDownloadQueue.shift()
+      if (!pending) {
+        syncLog('DOWNLOAD', 'jot_download_response arrived with empty queue — dropping')
+        notifyRenderer('sync:download-complete', { success: false, path: '', jotCount: 0, jotIds: [], error: 'No pending download target' })
+        break
+      }
+      const result = writeJotFiles(msg, pending.tagRootPath, pending.tagName)
+      const jotIds = msg.jots.map((j) => j.id)
+      notifyRenderer('sync:download-complete', { ...result, jotIds })
       break
     }
 
@@ -138,8 +149,13 @@ function registerIpcHandlers(): void {
   })
 
   // Download/clear requests
-  ipcMain.on('sync:request-download', (_event, data: { jotIds: number[]; downloadPath: string }) => {
-    pendingDownloadQueue.push(data.downloadPath || '')
+  ipcMain.on('sync:request-download', (_event, data: { jotIds: number[]; tagRootPath: string; tagName: string }) => {
+    if (!data.tagRootPath || !data.tagName) {
+      syncLog('DOWNLOAD', `sync:request-download rejected: missing tagRootPath or tagName`)
+      notifyRenderer('sync:download-complete', { success: false, path: '', jotCount: 0, error: 'Missing tagRootPath or tagName' })
+      return
+    }
+    pendingDownloadQueue.push({ tagRootPath: data.tagRootPath, tagName: data.tagName })
     send({ type: 'jot_download_request', jotIds: data.jotIds })
   })
 

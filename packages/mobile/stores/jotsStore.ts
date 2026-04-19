@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import type { InputModeId } from '@jotbunker/shared';
 import { JOT_COUNT } from '@jotbunker/shared';
+import { deleteSandboxFile } from '../utils/copyToSandbox';
 
 export interface AudioRecording {
   id: string;
@@ -101,15 +102,19 @@ export const useJotsStore = create<JotsState>()(
         })),
 
       removeImage: (jotId, imageId) =>
-        set((state) => ({
-          jots: {
-            ...state.jots,
-            [jotId]: {
-              ...state.jots[jotId],
-              images: state.jots[jotId].images.filter((img) => img.id !== imageId),
+        set((state) => {
+          const doomed = state.jots[jotId].images.find((img) => img.id === imageId);
+          if (doomed) deleteSandboxFile(doomed.uri);
+          return {
+            jots: {
+              ...state.jots,
+              [jotId]: {
+                ...state.jots[jotId],
+                images: state.jots[jotId].images.filter((img) => img.id !== imageId),
+              },
             },
-          },
-        })),
+          };
+        }),
 
       addAudio: (jotId, uri, duration) =>
         set((state) => ({
@@ -126,15 +131,19 @@ export const useJotsStore = create<JotsState>()(
         })),
 
       removeAudio: (jotId, audioId) =>
-        set((state) => ({
-          jots: {
-            ...state.jots,
-            [jotId]: {
-              ...state.jots[jotId],
-              recordings: (state.jots[jotId].recordings || []).filter((r) => r.id !== audioId),
+        set((state) => {
+          const doomed = (state.jots[jotId].recordings || []).find((r) => r.id === audioId);
+          if (doomed) deleteSandboxFile(doomed.uri);
+          return {
+            jots: {
+              ...state.jots,
+              [jotId]: {
+                ...state.jots[jotId],
+                recordings: (state.jots[jotId].recordings || []).filter((r) => r.id !== audioId),
+              },
             },
-          },
-        })),
+          };
+        }),
 
       addFile: (jotId, uri, fileName, mimeType, size) =>
         set((state) => ({
@@ -151,20 +160,30 @@ export const useJotsStore = create<JotsState>()(
         })),
 
       removeFile: (jotId, fileId) =>
-        set((state) => ({
-          jots: {
-            ...state.jots,
-            [jotId]: {
-              ...state.jots[jotId],
-              files: (state.jots[jotId].files || []).filter((f) => f.id !== fileId),
+        set((state) => {
+          const doomed = (state.jots[jotId].files || []).find((f) => f.id === fileId);
+          if (doomed) deleteSandboxFile(doomed.uri);
+          return {
+            jots: {
+              ...state.jots,
+              [jotId]: {
+                ...state.jots[jotId],
+                files: (state.jots[jotId].files || []).filter((f) => f.id !== fileId),
+              },
             },
-          },
-        })),
+          };
+        }),
 
       clearJot: (jotId) =>
-        set((state) => ({
-          jots: { ...state.jots, [jotId]: emptyJot() },
-        })),
+        set((state) => {
+          const jot = state.jots[jotId];
+          if (jot) {
+            jot.images.forEach((img) => deleteSandboxFile(img.uri));
+            (jot.recordings || []).forEach((r) => deleteSandboxFile(r.uri));
+            (jot.files || []).forEach((f) => deleteSandboxFile(f.uri));
+          }
+          return { jots: { ...state.jots, [jotId]: emptyJot() } };
+        }),
     }),
       {
         name: 'jotbunker-jots',

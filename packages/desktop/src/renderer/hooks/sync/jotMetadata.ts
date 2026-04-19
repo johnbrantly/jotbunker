@@ -10,6 +10,9 @@ export interface DownloadResult {
   success: boolean
   path: string
   jotCount: number
+  /** List of jotIds that were downloaded. Used by the renderer to write drawings
+   *  client-side after main's writeJotFiles completes. See spec/fix-download-all-drawings-PLAN.md. */
+  jotIds?: number[]
   error?: string
 }
 
@@ -59,10 +62,13 @@ export async function requestDownload(
   const tagRootPath = useSettingsStore.getState().tagRootPath
   const tagState = useTagStore.getState()
   const selectedTag = tagState.tags.find((t) => t.id === tagState.selectedTagId)
-  const tagLabel = selectedTag?.label || 'Quicksave'
-  const downloadPath = tagRootPath ? `${tagRootPath}/${tagLabel}` : ''
 
-  syncLog('DOWNLOAD', `requestDownload jots=[${jotIds.join(',')}]`)
+  if (!tagRootPath || !selectedTag) {
+    useConsoleStore.getState().log('Download cancelled: tag or folder not configured')
+    return
+  }
+
+  syncLog('DOWNLOAD', `requestDownload jots=[${jotIds.join(',')}] → ${tagRootPath}/${selectedTag.label}`)
   useConsoleStore.getState().log('Downloading...')
-  window.electronAPI.requestJotDownload(jotIds, downloadPath || undefined)
+  window.electronAPI.requestJotDownload(jotIds, tagRootPath, selectedTag.label)
 }

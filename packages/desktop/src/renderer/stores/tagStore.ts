@@ -20,12 +20,12 @@ const QUICKSAVE_TAG: Tag = {
 
 interface TagState {
   tags: Tag[]
-  selectedTagId: string | null
+  selectedTagId: string
   addTag: (label: string) => void
   removeTag: (id: string) => void
   removeTags: (ids: string[]) => void
   toggleFavorite: (id: string) => void
-  selectTag: (id: string | null) => void
+  selectTag: (id: string) => void
 }
 
 export const useTagStore = create<TagState>()(
@@ -63,7 +63,7 @@ export const useTagStore = create<TagState>()(
           if (idSet.size === 0) return state
           return {
             tags: state.tags.filter((t) => !idSet.has(t.id)),
-            selectedTagId: state.selectedTagId && idSet.has(state.selectedTagId) ? QUICKSAVE_TAG_ID : state.selectedTagId,
+            selectedTagId: idSet.has(state.selectedTagId) ? QUICKSAVE_TAG_ID : state.selectedTagId,
           }
         }),
 
@@ -87,7 +87,7 @@ export const useTagStore = create<TagState>()(
         selectedTagId: state.selectedTagId,
       }),
       merge: (persisted, current) => {
-        const p = persisted as Partial<TagState>
+        const p = persisted as Partial<TagState> & { selectedTagId?: string | null }
         let tags = (p.tags ?? []).map((t) => ({ ...t, isFavorite: t.isFavorite ?? false }))
         // Ensure quicksave tag exists
         const hasQuicksave = tags.some((t) => t.id === QUICKSAVE_TAG_ID)
@@ -97,11 +97,16 @@ export const useTagStore = create<TagState>()(
           // Force quicksave to always be favorited
           tags = tags.map((t) => t.id === QUICKSAVE_TAG_ID ? { ...t, isFavorite: true } : t)
         }
+        // Invariant: selectedTagId always points to an existing tag. If stale/null, snap to Quicksave.
+        const persistedSelected = p.selectedTagId
+        const selectedTagId = (persistedSelected && tags.some((t) => t.id === persistedSelected))
+          ? persistedSelected
+          : QUICKSAVE_TAG_ID
         return {
           ...current,
           ...p,
           tags,
-          selectedTagId: p.selectedTagId ?? QUICKSAVE_TAG_ID,
+          selectedTagId,
         }
       },
     },

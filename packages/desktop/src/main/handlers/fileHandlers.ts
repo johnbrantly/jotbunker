@@ -1,8 +1,7 @@
 import type { IpcMain } from 'electron'
 import { dialog } from 'electron'
 import { getWindow } from '../window'
-import { writeBackup, restoreBackup, writeTaskExport, writeTagFile, writeTagFileWithMedia, saveTextFile } from '../download'
-import { app } from 'electron'
+import { writeBackup, restoreBackup, writeTaskExport, writeTagFile, writeTagFileWithMedia } from '../download'
 import { mkdirSync, writeFileSync } from 'fs'
 import { join } from 'path'
 
@@ -39,20 +38,17 @@ export function registerFileHandlers(ipc: IpcMain): void {
   })
 
   ipc.handle('export:tasks', (_e, { sections, downloadDir }) => {
-    return writeTaskExport(sections, downloadDir || undefined)
+    return writeTaskExport(sections, downloadDir || '')
   })
 
-  // Save single image
-  // Save single text
-  ipc.handle('download:save-text', (_e, data: { text: string; downloadDir: string; filename?: string }) => {
-    return saveTextFile(data.text, data.downloadDir || undefined, data.filename)
-  })
-
-  // Save base64 data to tag folder
+  // Save base64 data to tag folder. tagRootPath and tagName are both required —
+  // no silent fallbacks. Renderer guarantees both are non-empty via store invariants.
   ipc.handle('download:save-base64', (_e, data: { base64: string; format: string; tagRootPath: string; tagName: string; filename: string }) => {
+    if (!data.tagRootPath || !data.tagName) {
+      return { success: false, path: '', error: 'download:save-base64 requires tagRootPath and tagName' }
+    }
     try {
-      const tagRoot = data.tagRootPath || join(app.getPath('documents'), 'Jotbunker Tags')
-      const tagDir = join(tagRoot, data.tagName)
+      const tagDir = join(data.tagRootPath, data.tagName)
       mkdirSync(tagDir, { recursive: true })
       const d = new Date()
       const ts = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}${String(d.getSeconds()).padStart(2, '0')}`
@@ -67,4 +63,22 @@ export function registerFileHandlers(ipc: IpcMain): void {
   // Tag-based filing
   ipc.handle('tags:save', (_e, data) => writeTagFile(data))
   ipc.handle('tags:save-with-media', (_e, data) => writeTagFileWithMedia(data))
+
+  // Write a rasterized drawing PNG into a DOWNLOAD ALL output directory.
+  // Renderer calls this after sync:download-complete for each jot that had a
+  // drawing in its local jotsStore. Mirrors the Save-to-Tag rasterize flow.
+  ipc.handle('download:save-drawing', (_e, data: { baseDir: string; jotId: number; drawingPngBase64: string }) => {
+    try {
+      if (!data.baseDir || !data.drawingPngBase64) {
+        return { success: false, error: 'baseDir and drawingPngBase64 required' }
+      }
+      const jotDir = join(data.baseDir, `Jot${data.jotId}`)
+      mkdirSync(jotDir, { recursive: true })
+      const filePath = join(jotDir, 'drawing.png')
+      writeFileSync(filePath, Buffer.from(data.drawingPngBase64, 'base64'))
+      return { success: true, path: filePath }
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) }
+    }
+  })
 }

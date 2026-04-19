@@ -8,19 +8,22 @@ import JotCard from './JotCard'
 import HeaderTray from '../HeaderTray'
 import DotMenu from '../DotMenu'
 import navJotsIcon from '../../assets/nav/nav-jots.png'
+import { useSaveStatusStore } from '../../stores/saveStatusStore'
 
 interface JotsTabProps {
   connected: boolean
+  isTransferring: boolean
   requestDownload: (jotIds: number[]) => void
   requestClear: (jotIds: number[]) => void
 }
 
-export default function JotsTab({ connected, requestDownload, requestClear }: JotsTabProps) {
+export default function JotsTab({ connected, isTransferring, requestDownload, requestClear }: JotsTabProps) {
   const { colors } = useTheme()
   const jots = useJotsStore((s) => s.jots)
   const manifest = useJotsStore((s) => s.manifest)
   const [expandedJotId, setExpandedJotId] = useState<number | null>(null)
   const [downloadAllStatus, setDownloadAllStatus] = useState<string | null>(null)
+  const isSaving = useSaveStatusStore((s) => s.isSaving)
 
   // Determine which jots have content — use manifest when available, fall back to jot data
   const jotHasContent = (id: number): boolean => {
@@ -33,9 +36,13 @@ export default function JotsTab({ connected, requestDownload, requestClear }: Jo
   const jotsWithContent = Array.from({ length: JOT_COUNT }, (_, i) => i + 1).filter(jotHasContent)
 
   const handleDownloadAll = useCallback(() => {
-    if (downloadAllStatus) return
+    if (downloadAllStatus || isTransferring || isSaving) return
+    // Global save mutex — desktopPlatform.handleDownloadComplete clears it when
+    // files finish writing, and the disconnect handler clears it if the response
+    // never arrives. Blocks the big ↓ Quicksave button on every JotCard too.
+    useSaveStatusStore.getState().setSaving(true)
     requestDownload(jotsWithContent)
-  }, [jotsWithContent, downloadAllStatus, requestDownload])
+  }, [jotsWithContent, downloadAllStatus, isTransferring, isSaving, requestDownload])
 
 
   const styles = useMemo(() => ({
@@ -136,6 +143,7 @@ export default function JotsTab({ connected, requestDownload, requestClear }: Jo
                 jotId={id}
                 jot={jots[id]}
                 connected={connected}
+                isTransferring={isTransferring}
                 isExpanded={expandedJotId === id}
                 onToggleExpand={() => setExpandedJotId(expandedJotId === id ? null : id)}
                 manifestEntry={manifest[id] || null}
@@ -148,11 +156,11 @@ export default function JotsTab({ connected, requestDownload, requestClear }: Jo
               <button
                 style={{
                   ...styles.downloadAllBtn,
-                  opacity: downloadAllStatus ? 0.6 : 1,
-                  cursor: downloadAllStatus ? 'default' : 'pointer',
+                  opacity: (downloadAllStatus || isTransferring || isSaving) ? 0.4 : 1,
+                  cursor: (downloadAllStatus || isTransferring || isSaving) ? 'default' : 'pointer',
                 }}
                 onClick={handleDownloadAll}
-                disabled={!!downloadAllStatus}
+                disabled={!!downloadAllStatus || isTransferring || isSaving}
               >
                 {downloadAllStatus || 'DOWNLOAD ALL'}
               </button>

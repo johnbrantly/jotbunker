@@ -13,6 +13,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { fonts } from '@jotbunker/shared';
 import { useTheme } from '../hooks/useTheme';
+import { copyToSandbox } from '../utils/copyToSandbox';
 
 interface ImageItem {
   id: string;
@@ -93,7 +94,20 @@ export default function ImageAttach({ images, onAdd, onRemove }: Props) {
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
       const ext = asset.uri.split('.').pop()?.toLowerCase() || 'jpg';
-      onAdd(asset.uri, ext);
+      // Copy into app sandbox so the URI remains readable by sync later.
+      // expo-file-system v19+ enforces a sandbox on File.base64(); raw
+      // content:// URIs from ImagePicker lose READ access after the picker
+      // grant expires.
+      try {
+        const sandboxUri = copyToSandbox(asset.uri, 'jot-images', ext);
+        onAdd(sandboxUri, ext);
+      } catch (e) {
+        console.warn('[ImageAttach] copy-to-sandbox failed:', e);
+        // Fallback: keep raw URI so the UI at least shows the image. Sync
+        // for this specific attachment will fail later with the classic
+        // READ-permission error, but recording remains usable.
+        onAdd(asset.uri, ext);
+      }
     }
   };
 

@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect, useReducer, useCallback, useRef } 
 import { cssFont } from '../styles/tokens'
 import { useTheme } from '../hooks/useTheme'
 import type { DesktopSyncState } from '../sync/useSyncSetup'
+import { useSaveStatusStore } from '../stores/saveStatusStore'
 import settingsGear from '../assets/nav/nav-settings.png'
 
 interface TopChromeProps {
@@ -25,7 +26,9 @@ function formatRelativeTime(ts: number): string {
 
 export default function TopChrome({ sync, onOpenSettings }: TopChromeProps) {
   const { colors } = useTheme()
-  const { syncStatus, lastSyncTimestamp, lastSyncWasAuto } = sync
+  const { syncStatus, lastSyncTimestamp, lastSyncWasAuto, isTransferring } = sync
+  const isSaving = useSaveStatusStore((s) => s.isSaving)
+  const syncLocked = isTransferring || isSaving
   const docked = syncStatus === 'connected'
   const [gearHover, setGearHover] = useState(false)
   const [refreshHover, setRefreshHover] = useState(false)
@@ -155,8 +158,13 @@ export default function TopChrome({ sync, onOpenSettings }: TopChromeProps) {
 
       {docked && (
         <button
-          style={styles.refreshBtn}
+          style={{
+            ...styles.refreshBtn,
+            opacity: syncLocked ? 0.4 : 1,
+            cursor: syncLocked ? 'default' : 'pointer',
+          }}
           onClick={handleRefresh}
+          disabled={syncLocked}
           onMouseEnter={() => setRefreshHover(true)}
           onMouseLeave={() => setRefreshHover(false)}
         >

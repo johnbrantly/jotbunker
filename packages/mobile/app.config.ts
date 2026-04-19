@@ -9,7 +9,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   name: 'JotBunker',
   slug: 'jotbunker',
-  version: '1.0.4',
+  version: '1.0.5',
   orientation: 'portrait',
   icon: './assets/icon.png',
   userInterfaceStyle: 'dark',
@@ -36,6 +36,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     edgeToEdgeEnabled: true,
     package: 'com.jotbunker.myapp',
+    // Required for LAN WebSocket sync (ws://<desktop-ip>:8080). Android 9+
+    // release builds default to cleartext-blocked, which silently rejects
+    // ws:// while the system browser still permits HTTP GET (that's why /ping
+    // works in Chrome on the phone but the app can't connect). Debug/dev
+    // builds auto-allow cleartext so this only surfaces in production AABs.
+    usesCleartextTraffic: true,
     permissions: [
       'android.permission.RECORD_AUDIO',
       'android.permission.MODIFY_AUDIO_SETTINGS',

@@ -1,19 +1,23 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Platform } from 'react-native';
-import { DisplayText } from './DisplayText';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  FlatList,
+} from 'react-native';
 import {
   useAudioRecorder,
+  useAudioPlayer,
   RecordingPresets,
   requestRecordingPermissionsAsync,
   AudioModule,
 } from 'expo-audio';
-import { File as ExpoFile } from 'expo-file-system';
-import type { AudioRecording } from '../stores/jotsStore';
-import { useTheme } from '../hooks/useTheme';
-import type { Theme } from '@jotbunker/shared';
 import { fonts } from '@jotbunker/shared';
-import WaveAnimation from './audio/WaveAnimation';
-import PlaybackRow from './audio/PlaybackRow';
+import { useTheme } from '../hooks/useTheme';
+import { useSyncStatusStore } from '../stores/syncStatusStore';
+import { copyToSandbox } from '../utils/copyToSandbox';
+import type { AudioRecording } from '../stores/jotsStore';
 
 interface Props {
   recordings: AudioRecording[];
@@ -21,154 +25,299 @@ interface Props {
   onRemove: (id: string) => void;
 }
 
-function createStyles(colors: Theme['colors'], d: Theme['audioMode']) {
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-    },
-    listArea: {
-      flex: 1,
-      minHeight: 0,
-    },
-    recorderArea: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: Platform.OS === 'android' ? 12 : 24,
-      gap: Platform.OS === 'android' ? 16 : d.gap,
-      flexShrink: 0,
-    },
-    timer: {
-      fontFamily: `${fonts.mono}-Light`,
-      fontSize: d.timerFontSize,
-      letterSpacing: d.timerFontSize * d.timerLetterSpacing,
-    },
-    recordBtn: {
-      width: d.btnSize,
-      height: d.btnSize,
-      borderRadius: d.btnSize / 2,
-      borderWidth: d.btnBorderWidth,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    innerIdle: {
-      width: d.innerIdleSize,
-      height: d.innerIdleSize,
-      borderRadius: d.innerIdleSize / 2,
-      backgroundColor: colors.primary,
-    },
-    innerRecording: {
-      width: d.innerRecordingSize,
-      height: d.innerRecordingSize,
-      borderRadius: d.innerRecordingRadius,
-      backgroundColor: colors.destructive,
-    },
-    label: {
-      fontFamily: `${fonts.sans}-Bold`,
-      fontSize: d.labelFontSize,
-      letterSpacing: d.labelFontSize * d.labelLetterSpacing,
-      color: d.labelColor,
-    },
-  });
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
 export default function AudioRecorder({ recordings, onAdd, onRemove }: Props) {
-  const { colors, audioMode: d } = useTheme();
+  const { colors, imageMode: d } = useTheme();
   const [isRecording, setIsRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Reentrancy guard — start/stop do long awaits and user can double-tap on slow devices
+  const busyRef = useRef(false);
 
-  const styles = useMemo(() => createStyles(colors, d), [colors, d]);
+  // Playback — ONE shared player for all rows (per consultant; avoids the
+  // per-row useAudioPlayer pattern that caused the original scroll-break).
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const sharedPlayer = useAudioPlayer(null);
 
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
-  };
+  // Dock-state lockout (preserves 1eaf925 behavior). While docked, tweetnacl
+  // encryption on the JS thread starves AVAudioRecorder on iOS and causes
+  // record UI lag + audio glitches. Block recording while docked; playback is
+  // unaffected and stays enabled.
+  const dockState = useSyncStatusStore((s) => s.dockState);
+  const canRecord = dockState === 'undocked';
 
+  // Clear interval on unmount
   useEffect(() => {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, []);
 
-  const toggle = useCallback(async () => {
+  // Clear playingId when the track naturally finishes. Pause/stop are handled
+  // explicitly in the row onPress so the listener only needs to catch end-of-track.
+  useEffect(() => {
+    const sub = sharedPlayer.addListener('playbackStatusUpdate', (status: any) => {
+      if (status?.didJustFinish) setPlayingId(null);
+    });
+    return () => sub.remove();
+  }, [sharedPlayer]);
+
+  const styles = useMemo(() => StyleSheet.create({
+    emptyContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: d.emptyGap,
+    },
+    emptyAddBtn: {
+      width: d.addBtnSize,
+      height: d.addBtnSize,
+      borderRadius: d.addBtnRadius,
+      borderWidth: 2,
+      borderStyle: 'dashed',
+      borderColor: d.addBtnBorder,
+      backgroundColor: d.addBtnBg,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    emptyAddIcon: {
+      fontSize: d.addBtnIconSize,
+      color: d.addBtnIconColor,
+    },
+    emptyLabel: {
+      fontFamily: `${fonts.sans}-Bold`,
+      fontSize: d.labelFontSize,
+      letterSpacing: d.labelFontSize * d.labelLetterSpacing,
+      color: d.labelColor,
+    },
+    listContainer: {
+      padding: d.padding,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.dialogBg,
+    },
+    rowIcon: {
+      fontSize: 22,
+    },
+    rowInfo: {
+      flex: 1,
+      gap: 2,
+    },
+    rowName: {
+      fontFamily: `${fonts.sans}-Bold`,
+      fontSize: 12,
+      color: colors.textPrimary,
+    },
+    rowMeta: {
+      fontFamily: `${fonts.mono}-Regular`,
+      fontSize: 10,
+      color: colors.textSecondary,
+    },
+    removeBtn: {
+      padding: 4,
+      marginLeft: 4,
+    },
+    removeText: {
+      fontSize: 18,
+      color: 'rgba(232,64,64,0.5)',
+    },
+    addRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderColor: colors.border,
+    },
+    addIcon: {
+      fontSize: 16,
+      color: colors.textSecondary,
+    },
+    addLabel: {
+      fontFamily: `${fonts.sans}-Bold`,
+      fontSize: 11,
+      letterSpacing: 0.5,
+      color: colors.textSecondary,
+    },
+  }), [d, colors]);
+
+  const stopRecord = useCallback(async () => {
+    if (busyRef.current) return;
+    busyRef.current = true;
     try {
-      if (isRecording) {
-        if (intervalRef.current) clearInterval(intervalRef.current);
-        const duration = elapsed;
-        if (Platform.OS === 'android') {
-          try { await recorder.stop(); } catch { /* Android MediaRecorder.stop() race */ }
-        } else {
-          await recorder.stop();
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      const duration = elapsed;
+      try { await recorder.stop(); } catch { /* stop may throw if not actively recording, or Android MediaRecorder race */ }
+      AudioModule.setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+      const uri = recorder.uri;
+      if (uri) {
+        try {
+          // Copy into app sandbox (Paths.document/jot-audio/). The recorder
+          // leaves the clip in expo-audio's cache dir, which is subject to OS
+          // eviction and which File.delete() from jotsStore removal can't
+          // reliably cover. Mirrors the FileAttach sandbox-copy pattern.
+          const sandboxUri = copyToSandbox(uri, 'jot-audio', 'm4a');
+          onAdd(sandboxUri, duration);
+        } catch (e) {
+          console.warn('[AudioRecorder] save failed:', e);
         }
-        AudioModule.setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
-        const uri = recorder.uri;
-        if (uri) {
-          const file = new ExpoFile(uri);
-          file.rename(`${Date.now()}_${Math.floor(performance.now() * 1000)}.m4a`);
-          onAdd(file.uri, duration);
-        }
-        setIsRecording(false);
-        setElapsed(0);
-      } else {
-        const { granted } = await requestRecordingPermissionsAsync();
-        if (!granted) return;
-        AudioModule.setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
-        await recorder.prepareToRecordAsync();
-        recorder.record();
-        setElapsed(0);
-        setIsRecording(true);
-        intervalRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
       }
+      setIsRecording(false);
+      setElapsed(0);
+    } finally {
+      busyRef.current = false;
+    }
+  }, [elapsed, onAdd, recorder]);
+
+  const startRecord = useCallback(async () => {
+    if (busyRef.current) return;
+    // Mutex: no new recording while something is playing (defensive — UI also disables)
+    if (playingId !== null) return;
+    // Dock lockout (defensive — UI also disables)
+    if (!canRecord) return;
+    busyRef.current = true;
+    try {
+      const { granted } = await requestRecordingPermissionsAsync();
+      if (!granted) return;
+      AudioModule.setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+      setElapsed(0);
+      setIsRecording(true);
+      intervalRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
     } catch (e) {
       if (intervalRef.current) clearInterval(intervalRef.current);
       setIsRecording(false);
       setElapsed(0);
-      console.warn('[AudioRecorder] toggle failed:', e);
+      console.warn('[AudioRecorder] start failed:', e);
+    } finally {
+      busyRef.current = false;
     }
-  }, [isRecording, elapsed, onAdd, recorder]);
+  }, [canRecord, playingId, recorder]);
+
+  const toggleRecord = useCallback(() => {
+    if (isRecording) stopRecord();
+    else startRecord();
+  }, [isRecording, startRecord, stopRecord]);
+
+  // If the user docks mid-recording, stop cleanly and save whatever was captured
+  useEffect(() => {
+    if (canRecord) return;
+    if (!isRecording) return;
+    stopRecord();
+  }, [canRecord, isRecording, stopRecord]);
+
+  if (recordings.length === 0) {
+    const emptyDisabled = !isRecording && !canRecord;
+    return (
+      <View style={styles.emptyContainer}>
+        <TouchableOpacity
+          style={[styles.emptyAddBtn, emptyDisabled && { opacity: 0.4 }]}
+          onPress={toggleRecord}
+          disabled={emptyDisabled}
+        >
+          <Text style={styles.emptyAddIcon}>{isRecording ? '■' : '●'}</Text>
+        </TouchableOpacity>
+        <Text style={styles.emptyLabel}>
+          {isRecording
+            ? `TAP TO STOP — ${formatTime(elapsed)}`
+            : !canRecord
+              ? 'DISCONNECT TO RECORD'
+              : 'TAP TO RECORD'}
+        </Text>
+      </View>
+    );
+  }
+
+  const data = [...recordings, { id: '__recorder__', uri: '', duration: 0, createdAt: 0 }];
 
   return (
-    <View style={styles.container}>
-      <View style={styles.listArea}>
-        {recordings.length > 0 && (
-          <ScrollView style={styles.list} nestedScrollEnabled>
-            {recordings.map((item) => (
-              <PlaybackRow key={item.id} item={item} onRemove={onRemove} colors={colors} />
-            ))}
-          </ScrollView>
-        )}
-      </View>
-
-      <View style={styles.recorderArea}>
-        <DisplayText
-          style={[
-            styles.timer,
-            { color: isRecording ? colors.destructive : d.timerIdleColor },
-          ]}
-        >
-          {formatTime(elapsed)}
-        </DisplayText>
-        <TouchableOpacity
-          style={[
-            styles.recordBtn,
-            {
-              borderColor: isRecording ? colors.destructive : colors.primary,
-              backgroundColor: isRecording ? d.btnRecordingBg : d.btnIdleBg,
-            },
-          ]}
-          onPress={toggle}
-        >
-          <View
-            style={isRecording ? styles.innerRecording : styles.innerIdle}
-          />
-        </TouchableOpacity>
-        <DisplayText style={styles.label}>
-          {isRecording ? 'TAP TO STOP' : 'TAP TO RECORD'}
-        </DisplayText>
-        <WaveAnimation d={d} isActive={isRecording} />
-      </View>
-    </View>
+    <FlatList
+      data={data}
+      keyExtractor={(item) => item.id}
+      contentContainerStyle={styles.listContainer}
+      ItemSeparatorComponent={() => <View style={{ height: 6 }} />}
+      renderItem={({ item }) => {
+        if (item.id === '__recorder__') {
+          // Mutex: block start-record while any clip is playing. Dock lockout: block
+          // start-record while docked. Stop-record (while already recording) always allowed.
+          const recordDisabled = !isRecording && (playingId !== null || !canRecord);
+          const footerLabel = isRecording
+            ? `TAP TO STOP — ${formatTime(elapsed)}`
+            : !canRecord
+              ? 'DISCONNECT TO RECORD'
+              : 'RECORD NEW';
+          return (
+            <TouchableOpacity
+              style={[styles.addRow, recordDisabled && { opacity: 0.4 }]}
+              onPress={toggleRecord}
+              disabled={recordDisabled}
+            >
+              <Text style={styles.addIcon}>{isRecording ? '■' : '●'}</Text>
+              <Text style={styles.addLabel}>{footerLabel}</Text>
+            </TouchableOpacity>
+          );
+        }
+        const playing = playingId === item.id;
+        // Mutex: block start-play while recording. Pause (already playing) always allowed.
+        const playDisabled = isRecording && !playing;
+        return (
+          <TouchableOpacity
+            style={[styles.row, playDisabled && { opacity: 0.4 }]}
+            disabled={playDisabled}
+            onPress={() => {
+              if (playDisabled) return;
+              if (playing) {
+                sharedPlayer.pause();
+                setPlayingId(null);
+              } else {
+                sharedPlayer.replace(item.uri);
+                sharedPlayer.play();
+                setPlayingId(item.id);
+              }
+            }}
+          >
+            <Text style={[styles.rowIcon, { color: playing ? colors.destructive : colors.primary }]}>
+              {playing ? '⏸' : '▶'}
+            </Text>
+            <View style={styles.rowInfo}>
+              <Text style={styles.rowName} numberOfLines={1}>{formatTime(item.duration)}</Text>
+              <Text style={styles.rowMeta}>{new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.removeBtn}
+              onPress={() => {
+                if (playing) {
+                  sharedPlayer.pause();
+                  setPlayingId(null);
+                }
+                onRemove(item.id);
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.removeText}>×</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        );
+      }}
+    />
   );
 }

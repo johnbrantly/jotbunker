@@ -122,12 +122,12 @@ export async function handleDownloadRequest(
     const jot = noteState.jots[jotId];
     if (!jot) continue;
 
-    let drawing: string | null = null;
-    if (jot.drawing) {
-      try {
-        drawing = await new ExpoFile(jot.drawing).base64();
-      } catch (e) { console.warn('[useSync] drawing read failed:', e); }
-    }
+    // Drawings are NOT transferred via this payload. `jot.drawing` on the phone
+    // is a JSON string of SVG path data (not a file URI) — desktop's renderer
+    // already has the JSON via metadata sync and rasterizes to PNG via
+    // `rasterizeDrawing` + the `download:save-drawing` IPC after this response
+    // is processed. Mirrors the Save-to-Tag flow. See spec/fix-download-all-drawings-PLAN.md.
+    const drawing: string | null = null;
 
     const images: ImagePayload[] = [];
     for (const img of jot.images) {

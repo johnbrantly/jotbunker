@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState } from 'react'
 import { cssFont } from '../../styles/tokens'
 import InfoIcon from './InfoIcon'
 import ManageTagsDialog from './ManageTagsDialog'
@@ -70,25 +70,6 @@ export default function TagSection({
   const [addValue, setAddValue] = useState('')
   const [searchValue, setSearchValue] = useState('')
   const [manageOpen, setManageOpen] = useState(false)
-  const tagListRef = useRef<HTMLDivElement>(null)
-
-  // ESC deselects tag
-  useEffect(() => {
-    if (selectedTagId === null) return
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') selectTag(null)
-    }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [selectedTagId, selectTag])
-
-  // Click whitespace inside the scrollable tag area to deselect
-  const handleTagAreaClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (selectedTagId === null) return
-    if (e.target === e.currentTarget || e.target === tagListRef.current) {
-      selectTag(null)
-    }
-  }
 
   const filteredTags = (searchValue
     ? tags.filter((t) => t.label.toLowerCase().includes(searchValue.toLowerCase()))
@@ -101,7 +82,7 @@ export default function TagSection({
   })
 
   const canSave =
-    selectedTagId !== null && (activeTab === 'scratchpad' || activeTab === 'lists' || activeTab === 'lockedLists')
+    activeTab === 'scratchpad' || activeTab === 'lists' || activeTab === 'lockedLists'
 
   const sourceLabel =
     activeTab === 'scratchpad'
@@ -272,7 +253,6 @@ export default function TagSection({
       {/* Scrollable middle — click whitespace to deselect */}
       <div
         className="list-scroll"
-        onClick={handleTagAreaClick}
         style={{
           flex: 1,
           overflowY: 'auto',
@@ -280,7 +260,7 @@ export default function TagSection({
           marginTop: 4,
         }}
       >
-        <div ref={tagListRef} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {filteredTags.map((tag) => {
             const isSelected = tag.id === selectedTagId
             const isFav = tag.isFavorite ?? false
@@ -302,7 +282,7 @@ export default function TagSection({
                     : '1px solid transparent',
                   cursor: 'pointer',
                 }}
-                onClick={() => selectTag(isSelected ? null : tag.id)}
+                onClick={() => { if (!isSelected) selectTag(tag.id) }}
               >
                 {isFav && (
                   <span style={{ color: colors.primary, fontSize: 10, flexShrink: 0 }}>
@@ -338,7 +318,7 @@ export default function TagSection({
       </div>
 
       {/* Pinned bottom */}
-      {(activeTab !== 'jots' || selectedTagId === null) && (
+      {activeTab !== 'jots' && (
         <div style={{ flexShrink: 0 }}>
           <button
             style={{

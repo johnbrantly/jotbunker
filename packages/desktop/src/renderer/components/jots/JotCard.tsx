@@ -15,12 +15,14 @@ import JotCardAudio from './JotCardAudio'
 import JotCardFiles from './JotCardFiles'
 import { useTagStore } from '../../stores/tagStore'
 import { useConsoleStore } from '../../stores/consoleStore'
+import { useSaveStatusStore } from '../../stores/saveStatusStore'
 import { rasterizeDrawing } from '../../utils/rasterizeDrawing'
 
 interface JotCardProps {
   jotId: number
   jot: JotData
   connected: boolean
+  isTransferring: boolean
   isExpanded: boolean
   onToggleExpand: () => void
   manifestEntry: ManifestEntry | null
@@ -41,7 +43,7 @@ function generateDefaultFilename(text: string): string {
     || 'untitled'
 }
 
-export default function JotCard({ jotId, jot, connected, isExpanded, onToggleExpand, manifestEntry, requestDownload, requestClear }: JotCardProps) {
+export default function JotCard({ jotId, jot, connected, isTransferring, isExpanded, onToggleExpand, manifestEntry, requestDownload, requestClear }: JotCardProps) {
   const { colors } = useTheme()
   const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [showTextEdit, setShowTextEdit] = useState(false)
@@ -52,6 +54,8 @@ export default function JotCard({ jotId, jot, connected, isExpanded, onToggleExp
   const log = useConsoleStore((s) => s.log)
   const jotMetaFetched = useJotsStore((s) => s.jotMetaFetched[jotId])
   const jotMetaLoading = useJotsStore((s) => s.jotMetaLoading[jotId])
+  const isSaving = useSaveStatusStore((s) => s.isSaving)
+  const saveLocked = isTransferring || isSaving
 
   // Derive "has content" from manifest when available, fall back to jot data
   const hasText = manifestEntry ? manifestEntry.hasText : jot.text.length > 0
@@ -115,23 +119,29 @@ export default function JotCard({ jotId, jot, connected, isExpanded, onToggleExp
     setShowTextEdit(false)
   }
 
-  const getTagDownloadDir = () => {
+  // Resolve the current save destination. Returns null if store state isn't ready
+  // (shouldn't happen once hydrated — selectedTagId is invariant-guaranteed non-null
+  // and tagRootPath is hydrated-defaulted to Documents/Jotbunker Tags).
+  const getTagTarget = (): { tagRootPath: string; tagName: string } | null => {
     const tagRootPath = useSettingsStore.getState().tagRootPath
-    const tag = useTagStore.getState().tags.find((t) => t.id === useTagStore.getState().selectedTagId)
-    const tagLabel = tag?.label || 'Quicksave'
-    return { tagRootPath, tagLabel }
+    const tagState = useTagStore.getState()
+    const tag = tagState.tags.find((t) => t.id === tagState.selectedTagId)
+    if (!tagRootPath || !tag) {
+      log('Save cancelled: tag or folder not configured')
+      return null
+    }
+    return { tagRootPath, tagName: tag.label }
   }
-
 
   const handleSaveImage = async (imageId: string, format: string, index: number) => {
     const img = jot.images.find((i) => i.id === imageId)
     if (!img?.dataUri) return
     const base64 = img.dataUri.split(',')[1]
     if (!base64) return
-    const tagRootPath = useSettingsStore.getState().tagRootPath
-    const tagName = selectedTag?.label || 'Quicksave'
+    const target = getTagTarget()
+    if (!target) return
     const filename = `image_${String(index).padStart(3, '0')}.${format || 'jpg'}`
-    const result = await window.electronAPI.saveBase64File({ base64, format, tagRootPath, tagName, filename })
+    const result = await window.electronAPI.saveBase64File({ base64, format, tagRootPath: target.tagRootPath, tagName: target.tagName, filename })
     if (result.success) log(`Image saved to ${result.path}`)
     else log(`Image save failed: ${result.error}`)
   }
@@ -141,10 +151,10 @@ export default function JotCard({ jotId, jot, connected, isExpanded, onToggleExp
     if (!rec?.dataUri) return
     const base64 = rec.dataUri.split(',')[1]
     if (!base64) return
-    const tagRootPath = useSettingsStore.getState().tagRootPath
-    const tagName = selectedTag?.label || 'Quicksave'
+    const target = getTagTarget()
+    if (!target) return
     const filename = `audio_${String(index).padStart(3, '0')}.m4a`
-    const result = await window.electronAPI.saveBase64File({ base64, format: 'm4a', tagRootPath, tagName, filename })
+    const result = await window.electronAPI.saveBase64File({ base64, format: 'm4a', tagRootPath: target.tagRootPath, tagName: target.tagName, filename })
     if (result.success) log(`Audio saved to ${result.path}`)
     else log(`Audio save failed: ${result.error}`)
   }
@@ -154,10 +164,10 @@ export default function JotCard({ jotId, jot, connected, isExpanded, onToggleExp
     if (!file?.dataUri) return
     const base64 = file.dataUri.split(',')[1]
     if (!base64) return
-    const tagRootPath = useSettingsStore.getState().tagRootPath
-    const tagName = selectedTag?.label || 'Quicksave'
+    const target = getTagTarget()
+    if (!target) return
     const ext = fileName.includes('.') ? fileName.split('.').pop() || '' : ''
-    const result = await window.electronAPI.saveBase64File({ base64, format: ext, tagRootPath, tagName, filename: fileName })
+    const result = await window.electronAPI.saveBase64File({ base64, format: ext, tagRootPath: target.tagRootPath, tagName: target.tagName, filename: fileName })
     if (result.success) log(`File saved to ${result.path}`)
     else log(`File save failed: ${result.error}`)
   }
@@ -166,9 +176,9 @@ export default function JotCard({ jotId, jot, connected, isExpanded, onToggleExp
     if (!drawingDataUrl) return
     const base64 = drawingDataUrl.split(',')[1]
     if (!base64) return
-    const tagRootPath = useSettingsStore.getState().tagRootPath
-    const tagName = selectedTag?.label || 'Quicksave'
-    const result = await window.electronAPI.saveBase64File({ base64, format: 'png', tagRootPath, tagName, filename: 'drawing.png' })
+    const target = getTagTarget()
+    if (!target) return
+    const result = await window.electronAPI.saveBase64File({ base64, format: 'png', tagRootPath: target.tagRootPath, tagName: target.tagName, filename: 'drawing.png' })
     if (result.success) log(`Drawing saved to ${result.path}`)
     else log(`Drawing save failed: ${result.error}`)
   }
@@ -217,10 +227,13 @@ export default function JotCard({ jotId, jot, connected, isExpanded, onToggleExp
 
   const handleTagDialogSave = async (filename: string, includeMedia: boolean) => {
     setShowTagDialog(false)
-    const tag = selectedTag || useTagStore.getState().tags.find((t) => t.id === 'quicksave')
-    if (!tag) return
-    const tagRootPath = useSettingsStore.getState().tagRootPath
+    const target = getTagTarget()
+    if (!target) return
+    const { tagRootPath, tagName } = target
 
+    // Global save mutex — blocks DOWNLOAD ALL and other JotCards' big Quicksave
+    // buttons for the duration of this save. Released in finally below.
+    useSaveStatusStore.getState().setSaving(true)
     try {
       let result: { success: boolean; path?: string; error?: string }
       if (includeMedia) {
@@ -238,7 +251,7 @@ export default function JotCard({ jotId, jot, connected, isExpanded, onToggleExp
           .map((f) => ({ base64: f.dataUri!.split(',')[1], fileName: f.fileName }))
         result = await window.electronAPI.saveToTagWithMedia({
           tagRootPath,
-          tagName: tag.label,
+          tagName,
           filename,
           text: freshJot.text,
           jotId: jotId,
@@ -254,14 +267,14 @@ export default function JotCard({ jotId, jot, connected, isExpanded, onToggleExp
           const freshJot = await waitForJotData()
           result = await window.electronAPI.saveToTag({
             tagRootPath,
-            tagName: tag.label,
+            tagName,
             filename,
             text: freshJot.text,
           })
         } else {
           result = await window.electronAPI.saveToTag({
             tagRootPath,
-            tagName: tag.label,
+            tagName,
             filename,
             text: jot.text,
           })
@@ -274,6 +287,8 @@ export default function JotCard({ jotId, jot, connected, isExpanded, onToggleExp
       }
     } catch (err) {
       log(`Save error: ${err}`)
+    } finally {
+      useSaveStatusStore.getState().setSaving(false)
     }
   }
 
@@ -454,11 +469,16 @@ export default function JotCard({ jotId, jot, connected, isExpanded, onToggleExp
           {hasContent && (
             <div style={styles.headerActions}>
               <button
-                style={styles.tagBtn}
+                style={{
+                  ...styles.tagBtn,
+                  opacity: saveLocked ? 0.4 : 1,
+                  cursor: saveLocked ? 'default' : 'pointer',
+                }}
                 onClick={(e) => { e.stopPropagation(); setShowTagDialog(true) }}
-                title={`Save to ${selectedTag?.label || 'Quicksave'}`}
+                disabled={saveLocked}
+                title={`Save to ${selectedTag?.label ?? ''}`}
               >
-                {`\u2193 ${selectedTag?.label || 'Quicksave'}`}
+                {`\u2193 ${selectedTag?.label ?? ''}`}
               </button>
               <button
                 style={styles.clearBtn}
@@ -485,11 +505,16 @@ export default function JotCard({ jotId, jot, connected, isExpanded, onToggleExp
                 jotId={jotId}
                 selectedTag={selectedTag}
                 onEditText={() => setShowTextEdit(true)}
-                onSaveText={async (text, _dir, filename) => {
-                  const { tagRootPath, tagLabel } = getTagDownloadDir()
-                  const downloadDir = tagRootPath ? `${tagRootPath}/${tagLabel}` : ''
+                onSaveText={async (text, filename) => {
+                  const target = getTagTarget()
+                  if (!target) return
                   try {
-                    const result = await window.electronAPI.saveTextFile({ text, downloadDir, filename })
+                    const result = await window.electronAPI.saveToTag({
+                      tagRootPath: target.tagRootPath,
+                      tagName: target.tagName,
+                      filename,
+                      text,
+                    })
                     if (result.success) log(`Text saved to ${result.path}`)
                     else log(`Text save failed: ${result.error}`)
                   } catch (err) {
@@ -504,7 +529,8 @@ export default function JotCard({ jotId, jot, connected, isExpanded, onToggleExp
               <JotCardDrawing
                 drawingDataUrl={drawingDataUrl}
                 jotId={jotId}
-                tagLabel={selectedTag?.label || 'Quicksave'}
+                tagLabel={selectedTag?.label ?? ''}
+                saveLocked={saveLocked}
                 onViewImage={(src, title) => setViewerImage({ src, title })}
                 onSaveDrawing={handleSaveDrawing}
                 styles={styles}
@@ -515,7 +541,8 @@ export default function JotCard({ jotId, jot, connected, isExpanded, onToggleExp
               <JotCardImages
                 images={jot.images}
                 jotId={jotId}
-                tagLabel={selectedTag?.label || 'Quicksave'}
+                tagLabel={selectedTag?.label ?? ''}
+                saveLocked={saveLocked}
                 onViewImage={(src, title) => setViewerImage({ src, title })}
                 onSaveImage={handleSaveImage}
                 styles={styles}
@@ -526,7 +553,8 @@ export default function JotCard({ jotId, jot, connected, isExpanded, onToggleExp
               <JotCardFiles
                 files={jot.files || []}
                 jotId={jotId}
-                tagLabel={selectedTag?.label || 'Quicksave'}
+                tagLabel={selectedTag?.label ?? ''}
+                saveLocked={saveLocked}
                 onSaveFile={handleSaveFile}
                 styles={styles}
               />
@@ -537,7 +565,8 @@ export default function JotCard({ jotId, jot, connected, isExpanded, onToggleExp
                 recordings={jot.recordings}
                 jotId={jotId}
                 playingAudioId={playingAudioId}
-                tagLabel={selectedTag?.label || 'Quicksave'}
+                tagLabel={selectedTag?.label ?? ''}
+                saveLocked={saveLocked}
                 onToggleAudio={toggleAudio}
                 onSaveAudio={handleSaveAudio}
                 styles={styles}

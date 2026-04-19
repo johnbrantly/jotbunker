@@ -61,6 +61,20 @@ export default function App() {
     }
   }, [])
 
+  // After hydration: ensure tagRootPath is a concrete absolute path.
+  // Empty means the user hasn't picked one — default to Documents/Jotbunker Tags
+  // so every save operation has a deterministic destination (no main-process fallbacks).
+  useEffect(() => {
+    if (!hydrated) return
+    const { tagRootPath, setTagRootPath } = useSettingsStore.getState()
+    if (tagRootPath) return
+    window.electronAPI.getDocumentsPath().then((docs) => {
+      if (!docs) return
+      const sep = docs.includes('\\') ? '\\' : '/'
+      setTagRootPath(`${docs}${sep}Jotbunker Tags`)
+    })
+  }, [hydrated])
+
   // Auto-update listeners
   useEffect(() => {
     window.electronAPI.onUpdateChecking(() => {
@@ -133,6 +147,7 @@ export default function App() {
           {activeTab === 'jots' && (
             <JotsTab
               connected={sync.syncStatus === 'connected'}
+              isTransferring={sync.isTransferring}
               requestDownload={sync.requestDownload}
               requestClear={sync.requestClear}
             />

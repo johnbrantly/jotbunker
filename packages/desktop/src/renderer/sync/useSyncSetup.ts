@@ -11,6 +11,7 @@ import { useSettingsStore } from '../stores/settingsStore'
 import { useLockedListsStore } from '../stores/lockedListsStore'
 import { useListsStore } from '../stores/listsStore'
 import { useScratchpadStore } from '../stores/scratchpadStore'
+import { useJotsStore } from '../stores/jotsStore'
 
 import { BinaryQueue } from '../hooks/sync/binaryQueue'
 import { requestDownload } from '../hooks/sync/jotMetadata'
@@ -22,6 +23,10 @@ export interface DesktopSyncState {
   phoneDeviceId: string | null
   downloadStatus: string | null
   binarySyncStatus: string | null
+  /** True while the phone is streaming jot metadata or binary files to us.
+   *  UI uses this to lock sync-initiating controls (SYNC NOW, DOWNLOAD ALL,
+   *  big Quicksave header button) so we don't stack duplicate requests. */
+  isTransferring: boolean
   jotRefreshed: boolean
   lastSyncTimestamp: number
   lastAutoSyncTimestamp: number
@@ -43,6 +48,14 @@ export function useDesktopSync(): DesktopSyncState {
 
   const debugLog = useSettingsStore((s) => s.debugLog)
   setSyncLogEnabled(debugLog)
+
+  // Derived "transfer in flight" flag. True whenever:
+  //   - Binary queue has active transfers (binarySyncStatus becomes non-null)
+  //   - OR any jot's metadata fetch is still pending
+  // Consumers use this to disable SYNC NOW / DOWNLOAD ALL / big Quicksave button
+  // so simultaneous user actions don't race the queue.
+  const metaLoading = useJotsStore((s) => Object.values(s.jotMetaLoading).some(Boolean))
+  const isTransferring = binarySyncStatus !== null || metaLoading
 
   useEffect(() => {
     window.electronAPI.setSyncDebugLog(debugLog)
@@ -157,6 +170,7 @@ export function useDesktopSync(): DesktopSyncState {
     phoneDeviceId,
     downloadStatus,
     binarySyncStatus,
+    isTransferring,
     jotRefreshed,
     lastSyncTimestamp,
     lastAutoSyncTimestamp,

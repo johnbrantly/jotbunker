@@ -29,7 +29,7 @@ interface Window {
     pickFolder: (defaultPath?: string) => Promise<string>
 
     // Download
-    requestJotDownload: (jotIds: number[], downloadPath?: string) => void
+    requestJotDownload: (jotIds: number[], tagRootPath: string, tagName: string) => void
     onDownloadComplete: (cb: (result: unknown) => void) => void
 
     // Clear
@@ -44,8 +44,8 @@ interface Window {
     // File transfer (binary sync)
     requestFile: (req: { jotId: number; fileId: string; fileType: 'image' | 'audio' }) => void
 
-    saveTextFile: (data: { text: string; downloadDir: string; filename?: string }) => Promise<{ success: boolean; path: string; error?: string }>
     saveBase64File: (data: { base64: string; format: string; tagRootPath: string; tagName: string; filename: string }) => Promise<{ success: boolean; path: string; error?: string }>
+    saveDownloadedDrawing: (data: { baseDir: string; jotId: number; drawingPngBase64: string }) => Promise<{ success: boolean; path?: string; error?: string }>
 
     // Menu events
     onMenuOpenSettings: (cb: () => void) => void
