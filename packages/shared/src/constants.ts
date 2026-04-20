@@ -1,4 +1,4 @@
-export const APP_VERSION = '1.0.5';
+export const APP_VERSION = '1.0.6';
 
 export const JOT_COUNT = 6;
 export const JOTS = [1, 2, 3, 4, 5, 6] as const;

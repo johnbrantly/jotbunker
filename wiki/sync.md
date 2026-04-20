@@ -36,6 +36,15 @@ If sync confirmation is disabled, the computer sends `sync_confirm` with mode `m
 
 The computer also has a **SYNC NOW** button that re-triggers a full state exchange at any time while connected.
 
+## Button states during transfers and saves
+
+To prevent overlapping operations from stepping on each other, the computer temporarily dims and disables certain buttons while a transfer or save is in progress:
+
+- **While phone → computer media is still arriving** (after expanding a jot or starting a download): Sync Now, Download All, the big ↓ save button on every jot, and the per-row save buttons for any item whose data hasn't arrived yet are all disabled.
+- **While the computer is writing a jot to disk** (Download All in progress, or a per-jot save including media): Sync Now, Download All, and every jot's big ↓ save button are disabled. Per-row save buttons for items whose data is already loaded remain disabled during this window as well.
+
+Buttons re-enable automatically the moment the operation finishes. The sidebar system messages log shows what's happening in plain text.
+
 ## Merge algorithm
 
 Conflicts are resolved per-slot using Last-Write-Wins (LWW) by `updatedAt` timestamp. Categories use the same approach across their fixed 6 slots. Deletion detection uses `remoteSince` (the other side's last sync timestamp) with a 500ms clock-skew grace period.

@@ -1,5 +1,14 @@
 # JotBunker Changelog
 
+
+ ## [v1.0.6] - 2026-04-20
+
+  **Desktop-only release.** 
+  - Fix Windows installer firewall rule: scoped to `LocalSubnet` across Domain, Private, and Public profiles
+  - Upgrade self-heal: existing 1.0.1-1.0.5 installs (which shipped `profile=any` with no remote-IP restriction) silently
+  - Updated installer consent prompt text to accurately describe the `LocalSubnet` scope
+  - Wiki: new firewall-rule verification section, four-entry deviations list, tightening guide in Security docs
+
 ## [v1.0.5] - 2026-04-19
 
 - Add Microsoft Azure Artifact Signing to Windows installer

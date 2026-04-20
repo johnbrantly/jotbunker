@@ -86,4 +86,4 @@ Computer app checks for updates on launch. Download and install are user-initiat
 - [Architecture](architecture.md) — monorepo layout, shared package, platform packages
 - [Sync Protocol](sync-protocol.md) — wire format, message types, encryption, state merge
 - [Data Storage](data-storage.md) — where data lives on each platform, persistence
-- Encryption — see CODEBASE-SUMMARY.json § Encryption for transport (NaCl), backup (AES-GCM), and biometric details
+- [Security](security.md) — transport encryption (NaCl), backup encryption (AES-GCM), biometric auth
