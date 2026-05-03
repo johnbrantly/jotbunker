@@ -75,7 +75,7 @@ export function createWindow(): BrowserWindow {
     width: state.width,
     height: state.height,
     ...(centered ? {} : { x: state.x, y: state.y }),
-    minWidth: 800,
+    minWidth: 400,
     minHeight: 600,
     backgroundColor: '#0a0a0a',
     show: false,

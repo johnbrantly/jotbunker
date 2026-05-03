@@ -13,7 +13,7 @@ Content Area       — tab-switched: Jots, Lists, Locked Lists, Scratchpad
 Bottom Nav         — tab bar
 ```
 
-Additional overlays: Settings Modal, About Modal, Setup Wizard, SyncReportDialog, SyncLogDialog, SyncConfirmationSection.
+Additional overlays: Settings Modal, About Modal, Setup Wizard, SyncReportDialog, SyncLogDialog.
 
 ## Jots tab
 
@@ -41,7 +41,7 @@ Checks for updates 3 seconds after launch. Download and install are both user-in
 
 ## Settings
 
-Settings modal accessed via the gear icon. Ten sections: Network Sync, Accent Color, Font Size, Categories (×3), Save Folder, Data Backup, Debug Logging, and Sync Confirmation. See [Computer Settings](computer-settings.md) for full reference.
+Settings modal accessed via the gear icon. Sections: Network Sync, Accent Color, Font Size, Categories (×3), Save Folder, Data Backup, Debug Logging, and Sync History. See [Computer Settings](computer-settings.md) for full reference.
 
 ## Data locations
 

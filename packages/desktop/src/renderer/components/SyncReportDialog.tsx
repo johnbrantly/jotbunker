@@ -196,14 +196,6 @@ export default function SyncReportDialog() {
       color: colors.textPrimary,
       letterSpacing: d.titleFontSize * d.titleLetterSpacing,
     },
-    warning: {
-      ...cssFont('DMSans-Bold'),
-      fontSize: 11,
-      color: '#f59e0b',
-      letterSpacing: 0.3,
-      textAlign: 'center' as const,
-      marginTop: -4,
-    },
     body: {
       width: '100%',
       maxHeight: 400,
@@ -238,27 +230,6 @@ export default function SyncReportDialog() {
       letterSpacing: d.btnFontSize * d.btnLetterSpacing,
       color: colors.primary,
     },
-    confirmBtn: {
-      flex: 1,
-      minWidth: 80,
-      paddingTop: d.btnPaddingV,
-      paddingBottom: d.btnPaddingV,
-      borderRadius: d.btnRadius,
-      backgroundColor: d.successConfirmBg,
-      borderWidth: 1,
-      borderStyle: 'solid' as const,
-      borderColor: d.successConfirmBorder,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      cursor: 'pointer' as const,
-    },
-    confirmText: {
-      ...cssFont('DMSans-Bold'),
-      fontSize: d.btnFontSize,
-      letterSpacing: d.btnFontSize * d.btnLetterSpacing,
-      color: colors.success,
-    },
     winsBtn: {
       flex: 1,
       minWidth: 80,
@@ -285,7 +256,6 @@ export default function SyncReportDialog() {
   if (!pending) return null
 
   const { report } = pending
-  const big = report.isBigDivergence
 
   return (
     <div style={styles.overlay}>
@@ -294,44 +264,23 @@ export default function SyncReportDialog() {
         <span style={{ ...cssFont('DMSans-Regular'), fontSize: 10, color: colors.textSecondary }}>
           Auto-cancel in {secondsLeft}s
         </span>
-        {big && (
-          <span style={styles.warning}>LARGE DIVERGENCE DETECTED</span>
-        )}
+        <span style={{ ...cssFont('DMSans-Bold'), fontSize: 11, color: colors.textSecondary, letterSpacing: 0.3, textAlign: 'center' as const, marginTop: -2 }}>
+          Lists, Locked Lists, and Scratchpad will be replaced wholesale on the losing side. Jots are unaffected.
+        </span>
         <div style={styles.body}>
-          {report.isEmpty && (
-            <div style={{ ...cssFont('DMSans-Regular'), fontSize: 12, color: colors.textSecondary, textAlign: 'center', padding: '12px 0' }}>
-              Nothing to sync — Phone and Desktop identical
-            </div>
-          )}
           <SideReport side={report.phoneOnly} label="PHONE HAS (desktop does not)" />
           <SideReport side={report.desktopOnly} label="DESKTOP HAS (phone does not)" />
-          <SideReport side={report.desktopResult} label="DESKTOP AFTER MERGE" />
         </div>
         <div style={styles.btnRow}>
-          {report.isEmpty ? (
-            <button style={styles.confirmBtn} onClick={() => respond('confirm')}>
-              <span style={styles.confirmText}>OK</span>
-            </button>
-          ) : (
-            <>
-              <button style={styles.cancelBtn} onClick={() => respond('cancel')}>
-                <span style={styles.cancelText}>CANCEL</span>
-              </button>
-              {big && (
-                <>
-                  <button style={styles.winsBtn} onClick={() => respond('desktop-wins')}>
-                    <span style={styles.winsText}>DESKTOP WINS</span>
-                  </button>
-                  <button style={styles.winsBtn} onClick={() => respond('phone-wins')}>
-                    <span style={styles.winsText}>PHONE WINS</span>
-                  </button>
-                </>
-              )}
-              <button style={styles.confirmBtn} onClick={() => respond('confirm')}>
-                <span style={styles.confirmText}>{big ? 'MERGE' : 'SYNC'}</span>
-              </button>
-            </>
-          )}
+          <button style={styles.cancelBtn} onClick={() => respond('cancel')}>
+            <span style={styles.cancelText}>CANCEL</span>
+          </button>
+          <button style={styles.winsBtn} onClick={() => respond('desktop-wins')}>
+            <span style={styles.winsText}>DESKTOP WINS</span>
+          </button>
+          <button style={styles.winsBtn} onClick={() => respond('phone-wins')}>
+            <span style={styles.winsText}>PHONE WINS</span>
+          </button>
         </div>
       </div>
     </div>

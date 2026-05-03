@@ -26,7 +26,7 @@ function formatRelativeTime(ts: number): string {
 
 export default function TopChrome({ sync, onOpenSettings }: TopChromeProps) {
   const { colors } = useTheme()
-  const { syncStatus, lastSyncTimestamp, lastSyncWasAuto, isTransferring } = sync
+  const { syncStatus, lastSyncTimestamp, isTransferring } = sync
   const isSaving = useSaveStatusStore((s) => s.isSaving)
   const syncLocked = isTransferring || isSaving
   const docked = syncStatus === 'connected'
@@ -149,7 +149,7 @@ export default function TopChrome({ sync, onOpenSettings }: TopChromeProps) {
         </div>
         {lastSyncTimestamp > 0 && (
           <span style={styles.syncedAgo}>
-            {lastSyncWasAuto ? 'Auto-synced' : 'Synced'} {formatRelativeTime(lastSyncTimestamp)}
+            Synced {formatRelativeTime(lastSyncTimestamp)}
           </span>
         )}
       </div>

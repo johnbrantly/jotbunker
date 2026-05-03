@@ -24,7 +24,7 @@ You can configure how quickly the tab re-locks after navigating away. Options ra
 
 ## Sync behavior
 
-Locked lists sync bidirectionally with the same LWW merge as regular lists. The biometric gate is local to the phone — syncing doesn't require re-authentication. When the computer receives locked list data from the phone, it stores and displays it directly.
+Locked lists sync bidirectionally using the same user-choice flow as regular lists. The SYNC PREVIEW dialog on the computer shows what each side has and asks the user to pick DESKTOP WINS, PHONE WINS, or CANCEL; the losing side is replaced wholesale. The biometric gate is local to the phone; syncing doesn't require re-authentication. When the computer receives locked list data from the phone, it stores and displays it directly.
 
 ---
 

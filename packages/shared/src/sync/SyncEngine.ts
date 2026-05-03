@@ -1,7 +1,6 @@
 import type {
   SyncWireMessage,
   StateSync,
-  Handshake,
   JotDownloadRequest,
   JotClearRequest,
   FileRequest,
@@ -141,13 +140,11 @@ export class SyncEngine {
       case 'handshake':
         if (this.isDesktop()) {
           await this.platform.handleHandshake(msg, (m) => this.transport.send(m))
-          // If autoSync was false, handleHandshake skipped sendStateSync —
-          // dock immediately so the connection is live for manual sync
-          if (this.phaseManager.phase === 'syncing') {
-            this.phaseManager.setPhase('docked')
-            this.platform.onConnectionStatusChange?.('connected')
-            this.platform.onLive?.()
-          }
+          // handleHandshake never sends state_sync; dock immediately so SYNC
+          // NOW can drive the exchange.
+          this.phaseManager.setPhase('docked')
+          this.platform.onConnectionStatusChange?.('connected')
+          this.platform.onLive?.()
         }
         break
 
@@ -156,16 +153,12 @@ export class SyncEngine {
         if (this.isMobile()) {
           this.phaseManager.setPhase('handshake')
           const handshake = this.platform.buildHandshake(this.platform.getLastSyncTimestamp())
-          const autoSync = (handshake as Handshake).autoSync !== false
           this.transport.send(handshake)
-          if (autoSync) {
-            this.phaseManager.setPhase('syncing')
-          } else {
-            // No auto-sync — dock immediately, user can trigger sync manually
-            this.phaseManager.setPhase('docked')
-            this.platform.onConnectionStatusChange?.('connected')
-            this.platform.onLive?.()
-          }
+          // Phone never auto-syncs on connect; dock immediately so the user
+          // can edit while the desktop drives the next state exchange.
+          this.phaseManager.setPhase('docked')
+          this.platform.onConnectionStatusChange?.('connected')
+          this.platform.onLive?.()
         } else {
           this.phaseManager.setPhase('syncing')
         }
@@ -182,12 +175,9 @@ export class SyncEngine {
         this.phaseManager.clearPhaseTimeout()
         this.phaseManager.setPhase('docked')
         this.platform.onConnectionStatusChange?.('connected')
-        // On desktop: merge already happened in handleStateSync, safe to update timestamp
-        // On phone: merge hasn't happened yet (waiting for sync_confirm), DON'T update timestamp
-        // Phone updates timestamp in handleSyncConfirm instead
-        if (this.isDesktop()) {
-          await this.platform.setLastSyncTimestamp(Date.now())
-        }
+        // Timestamp updates are handled by the platform's handleStateSync
+        // itself: desktop bumps on success/empty paths but not on user-cancel,
+        // phone bumps in handleSyncConfirm after the user picks a side.
         this.platform.onLive?.()
         break
       }

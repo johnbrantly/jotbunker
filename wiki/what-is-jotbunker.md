@@ -12,7 +12,7 @@ Your phone is always with you, which makes it the right tool for capture. JotBun
 
 **Jots** are six numbered slots — intentionally limited. Each slot holds text, a finger drawing, camera photos, voice recordings, and file attachments, all independently. When the slots fill up, you bring the phone back to the Bunker, download them, and clear the slots for the next round. The constraint is the point: you're capturing what matters today, not building a digital hoard.
 
-**Lists** are your todos and checklists. Rename the default categories to whatever fits your life, reorder items with a drag, and check things off on either device — changes merge automatically when you reconnect.
+**Lists** are your todos and checklists. Rename the default categories to whatever fits your life, reorder items with a drag, and check things off on either device. When you sync, the computer shows what each side has and asks you which side wins.
 
 **Locked Lists** are for the stuff you always need but can never remember: gate codes, lock combos, membership numbers, safe combinations. Protected behind biometrics (Face ID or passcode) and auto-locked the moment you navigate away.
 
@@ -26,7 +26,7 @@ Everything on the phone works offline. No spinners, no connectivity required.
 
 Your home network and computer are the Bunker. This is where things live permanently.
 
-Pair your phone once by scanning a QR code. After that, tap Sync whenever you're back on your home network and your phone connects automatically over local Wi-Fi. No internet required. No cloud relay in the middle.
+Pair your phone once by scanning a QR code. After that, tap Sync whenever you're back on your home network and the phone connects to the computer over local Wi-Fi. No internet required. No cloud relay in the middle.
 
 Once connected, everything syncs: your lists, your scratchpads, your jots. From the computer app you can download your jots to your filesystem as plain files — .txt, .jpg, .m4a, .pdf — in folders you choose and control. Use them with anything: search tools, scripts, a PKM system, a RAG pipeline, or just File Explorer.
 

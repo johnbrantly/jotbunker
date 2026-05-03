@@ -25,8 +25,6 @@ Controls the connection between your phone and computer.
 |---|---|---|---|
 | Connection status | Display | — | Green dot = CONNECTED, yellow dot = CONNECTING, gray dot = DISCONNECTED |
 | NETWORK SETTINGS | Button | — | Opens edit mode (shows IP, port, secret, Unpair button) |
-| Auto-connect | Toggle (OFF/ON) | ON | Automatically connects to computer when app opens or returns to foreground |
-| Sync on auto-connect | Toggle (OFF/ON) | ON | Automatically syncs after auto-connecting. Fades to 30% opacity when Auto-connect is OFF |
 | Keep awake | Toggle (OFF/ON) | OFF | Prevents phone device auto-lock while connected to computer |
 
 

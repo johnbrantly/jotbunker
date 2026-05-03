@@ -37,7 +37,6 @@ function stubMobilePlatform(): MobileSyncPlatform {
       deviceId: 'test-phone',
       lastSyncTimestamp: 0,
       pairingSecret: 'sec',
-      autoSync: true,
     })),
   }
 }
@@ -128,35 +127,17 @@ describe('SyncEngine — mobile mode', () => {
     platform = stubMobilePlatform()
   })
 
-  it('key_exchange → builds handshake, sends it, phase syncing', async () => {
+  it('key_exchange → builds handshake, sends it, phase docked immediately', async () => {
     const engine = new SyncEngine(transport, platform)
     engine.connect()
     simulateConnect(transport)
 
     await receiveMessage(transport, { type: 'key_exchange', publicKey: 'abc' } as SyncWireMessage)
-    // Allow async to settle
     await vi.waitFor(() => {
       expect(platform.buildHandshake).toHaveBeenCalled()
       expect(transport.send).toHaveBeenCalled()
-      expect(engine.currentPhase).toBe('syncing')
-    })
-  })
-
-  it('key_exchange with autoSync: false → phase docked immediately', async () => {
-    ;(platform.buildHandshake as ReturnType<typeof vi.fn>).mockReturnValue({
-      type: 'handshake',
-      deviceId: 'test-phone',
-      lastSyncTimestamp: 0,
-      pairingSecret: 'sec',
-      autoSync: false,
-    })
-
-    const engine = new SyncEngine(transport, platform)
-    engine.connect()
-    simulateConnect(transport)
-
-    await receiveMessage(transport, { type: 'key_exchange', publicKey: 'abc' } as SyncWireMessage)
-    await vi.waitFor(() => {
+      // Phone never auto-syncs on connect; it docks immediately and waits
+      // for SYNC NOW from the desktop.
       expect(engine.currentPhase).toBe('docked')
       expect(platform.onConnectionStatusChange).toHaveBeenCalledWith('connected')
     })
@@ -196,7 +177,7 @@ describe('SyncEngine — mobile mode', () => {
 
   it('sync_confirm → routes to handleSyncConfirm', async () => {
     const engine = new SyncEngine(transport, platform)
-    const msg = { type: 'sync_confirm', mode: 'merge' } as SyncWireMessage
+    const msg = { type: 'sync_confirm', mode: 'desktop-wins' } as SyncWireMessage
     await receiveMessage(transport, msg)
     await vi.waitFor(() => {
       expect(platform.handleSyncConfirm).toHaveBeenCalled()
@@ -243,7 +224,7 @@ describe('SyncEngine — desktop (server) mode', () => {
     })
   })
 
-  it('state_sync → calls handleStateSync, updates timestamp', async () => {
+  it('state_sync → calls handleStateSync, phase docked', async () => {
     const engine = new SyncEngine(transport, platform, { serverMode: true })
     engine.connect()
     simulateConnect(transport)
@@ -261,7 +242,9 @@ describe('SyncEngine — desktop (server) mode', () => {
     await vi.waitFor(() => {
       expect(platform.handleStateSync).toHaveBeenCalled()
       expect(engine.currentPhase).toBe('docked')
-      expect(platform.setLastSyncTimestamp).toHaveBeenCalled()
+      // Timestamp updates are the platform handler's responsibility now (so the
+      // user-cancel path can correctly skip bumping). The engine no longer
+      // bumps post-handler.
     })
   })
 

@@ -24,7 +24,7 @@ describe('parseMessage', () => {
     ['jot_manifest', { jots: [] }],
     ['debug_log', { lines: ['hello'] }],
     ['state_sync', { lists: [], lockedLists: [], listsCategories: [], lockedListsCategories: [], since: 0 }],
-    ['sync_confirm', { mode: 'merge' }],
+    ['sync_confirm', { mode: 'desktop-wins' }],
     ['sync_cancel', {}],
   ]
 

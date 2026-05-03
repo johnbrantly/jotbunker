@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { SyncReport } from '@jotbunker/shared'
 
-export type SyncConfirmChoice = 'confirm' | 'cancel' | 'desktop-wins' | 'phone-wins'
+export type SyncConfirmChoice = 'cancel' | 'desktop-wins' | 'phone-wins'
 
 interface SyncConfirmState {
   pending: {

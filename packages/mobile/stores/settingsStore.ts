@@ -28,10 +28,6 @@ interface SettingsState {
   setDebugLog: (v: boolean) => void;
   appLockEnabled: boolean;
   setAppLockEnabled: (v: boolean) => void;
-  autoConnectOnOpen: boolean;
-  setAutoConnectOnOpen: (v: boolean) => void;
-  autoSyncOnConnect: boolean;
-  setAutoSyncOnConnect: (v: boolean) => void;
   keepAwakeEnabled: boolean;
   setKeepAwakeEnabled: (v: boolean) => void;
   keepAwakeMinutes: number;
@@ -67,10 +63,6 @@ export const useSettingsStore = create<SettingsState>()(
       setDebugLog: (v) => set({ debugLog: v }),
       appLockEnabled: false,
       setAppLockEnabled: (v) => set({ appLockEnabled: v }),
-      autoConnectOnOpen: true,
-      setAutoConnectOnOpen: (v) => set({ autoConnectOnOpen: v }),
-      autoSyncOnConnect: true,
-      setAutoSyncOnConnect: (v) => set({ autoSyncOnConnect: v }),
       keepAwakeEnabled: false,
       setKeepAwakeEnabled: (v) => set({ keepAwakeEnabled: v }),
       keepAwakeMinutes: 5,
@@ -81,10 +73,15 @@ export const useSettingsStore = create<SettingsState>()(
     {
       name: 'jotbunker-settings',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 1,
+      version: 2,
       migrate: (persisted: any, version: number) => {
         if (version === 0) {
           persisted.setupComplete = true;
+        }
+        if (version < 2) {
+          // Auto-connect / auto-sync features removed; strip stale keys.
+          delete persisted.autoConnectOnOpen;
+          delete persisted.autoSyncOnConnect;
         }
         return persisted;
       },

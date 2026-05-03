@@ -23,7 +23,13 @@ interface RowItemProps {
   primaryColor: string;
 }
 
-export function RowItem({ item, drag, isActive, onToggle, onDelete, onUpdateText, styles, primaryColor }: RowItemProps) {
+// Custom comparator: keep in sync with RowItemProps.
+// `drag` is intentionally excluded because the library may pass a fresh
+// closure each render, and `drag` is only read inside event handlers
+// (onLongPress={drag}), never rendered into the tree.
+// If RowItem ever uses `drag` to affect rendered output (e.g. conditional
+// styling on the handle), this comparator must start comparing it.
+export const RowItem = React.memo(function RowItem({ item, drag, isActive, onToggle, onDelete, onUpdateText, styles, primaryColor }: RowItemProps) {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState('');
 
@@ -103,4 +109,12 @@ export function RowItem({ item, drag, isActive, onToggle, onDelete, onUpdateText
       </View>
     </ScaleDecorator>
   );
-}
+},
+  (a, b) =>
+    a.item === b.item
+    && a.isActive === b.isActive
+    && a.onToggle === b.onToggle
+    && a.onDelete === b.onDelete
+    && a.onUpdateText === b.onUpdateText
+    && a.styles === b.styles
+    && a.primaryColor === b.primaryColor);

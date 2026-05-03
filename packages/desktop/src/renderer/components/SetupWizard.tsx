@@ -355,7 +355,6 @@ export default function SetupWizard({ onComplete }: Props) {
           staleIpWarning={staleIpWarning}
           setStaleIpWarning={setStaleIpWarning}
           pairingSecret={pairingSecret}
-          hideAutoSync
           styles={styles}
           colors={colors}
         />

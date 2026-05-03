@@ -1,12 +1,27 @@
 import type { ListItem, Category } from '../types'
 import type { StateSync } from './protocol'
-import type { MergeStores } from './stateMerge'
 import { CATEGORY_COUNT } from '../constants'
 
-// ── Thresholds ──
-
-const BIG_DIVERGENCE_DELETES = 5
-const BIG_DIVERGENCE_TOTAL = 20
+/**
+ * Snapshot of the three sync-resolution sections for a single side (phone or
+ * computer). Used to shape inputs to `computeSyncReport` and the desktop's
+ * `handleStateSync` snapshot/phonePreState. Items and scratchpad contents are
+ * fixed 6-slot arrays.
+ */
+export interface MergeStores {
+  lists: {
+    items: ListItem[][]
+    categories: Category[]
+  }
+  lockedLists: {
+    items: ListItem[][]
+    categories: Category[]
+  }
+  scratchpad: {
+    contents: { content: string; updatedAt: number }[]
+    categories: Category[]
+  }
+}
 
 // ── Report types ──
 
@@ -71,14 +86,11 @@ export interface SyncSideReport {
 
 export interface SyncReport {
   timestamp: number
-  /** What will change on the desktop after merge */
-  desktopResult: SyncSideReport
   /** Items only on the phone (phone has, desktop doesn't) */
   phoneOnly: SyncSideReport
   /** Items only on the desktop (desktop has, phone doesn't) */
   desktopOnly: SyncSideReport
   isEmpty: boolean
-  isBigDivergence: boolean
 }
 
 // ── Internal helpers ──
@@ -220,34 +232,20 @@ function buildPhonePreState(remote: StateSync): MergeStores {
 export function computeSyncReport(
   local: MergeStores,
   remote: StateSync,
-  merged: MergeStores,
 ): SyncReport {
   const phonePre = buildPhonePreState(remote)
 
-  // What will change on the desktop after merge
-  const desktopResult = computeSideReport(local, merged)
-
-  // Divergence: items phone has that desktop doesn't (diff desktop → phone)
+  // Items the phone has that the desktop doesn't.
   const phoneOnly = computeSideReport(local, phonePre)
 
-  // Divergence: items desktop has that phone doesn't (diff phone → desktop)
+  // Items the desktop has that the phone doesn't.
   const desktopOnly = computeSideReport(phonePre, local)
-
-  const isEmpty = desktopResult.isEmpty && phoneOnly.isEmpty && desktopOnly.isEmpty
-
-  const totalDeletes = desktopResult.totalDeleted + phoneOnly.totalDeleted + desktopOnly.totalDeleted
-  const totalChanges = (desktopResult.totalAdded + desktopResult.totalDeleted + desktopResult.totalModified + desktopResult.totalChecked)
-    + (phoneOnly.totalAdded + phoneOnly.totalDeleted)
-    + (desktopOnly.totalAdded + desktopOnly.totalDeleted)
-  const isBigDivergence = totalDeletes > BIG_DIVERGENCE_DELETES || totalChanges > BIG_DIVERGENCE_TOTAL
 
   return {
     timestamp: Date.now(),
-    desktopResult,
     phoneOnly,
     desktopOnly,
-    isEmpty,
-    isBigDivergence,
+    isEmpty: phoneOnly.isEmpty && desktopOnly.isEmpty,
   }
 }
 
@@ -321,12 +319,6 @@ export function formatSyncReport(report: SyncReport): string {
     if (lines.length > 0) lines.push('')
     lines.push('DESKTOP HAS (phone does not)')
     lines.push(...formatSide(report.desktopOnly))
-  }
-
-  if (!report.desktopResult.isEmpty) {
-    if (lines.length > 0) lines.push('')
-    lines.push('DESKTOP AFTER MERGE')
-    lines.push(...formatSide(report.desktopResult))
   }
 
   return lines.join('\n')

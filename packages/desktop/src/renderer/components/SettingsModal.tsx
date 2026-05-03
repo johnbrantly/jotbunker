@@ -17,7 +17,7 @@ import NetworkSyncSection from './settings/NetworkSyncSection'
 import FontSizeSection from './settings/FontSizeSection'
 import AccentColorSection from './settings/AccentColorSection'
 import DebugLoggingSection from './settings/DebugLoggingSection'
-import SyncConfirmationSection from './settings/SyncConfirmationSection'
+import SyncHistorySection from './settings/SyncHistorySection'
 import FolderPathsSection from './settings/FolderPathsSection'
 
 interface Props {
@@ -51,14 +51,8 @@ export default function SettingsModal({ onClose, onOpenSyncLog }: Props) {
   const setSyncInterfaceIpStore = useSettingsStore((s) => s.setSyncInterfaceIp)
   const debugLog = useSettingsStore((s) => s.debugLog)
   const setDebugLogStore = useSettingsStore((s) => s.setDebugLog)
-  const syncConfirmation = useSettingsStore((s) => s.syncConfirmation)
-  const setSyncConfirmationStore = useSettingsStore((s) => s.setSyncConfirmation)
   const pairingSecret = useSettingsStore((s) => s.pairingSecret)
   const setPairingSecret = useSettingsStore((s) => s.setPairingSecret)
-  const autoSyncEnabledStore = useSettingsStore((s) => s.autoSyncEnabled)
-  const setAutoSyncEnabledStore = useSettingsStore((s) => s.setAutoSyncEnabled)
-  const autoSyncDelaySecStore = useSettingsStore((s) => s.autoSyncDelaySec)
-  const setAutoSyncDelaySecStore = useSettingsStore((s) => s.setAutoSyncDelaySec)
 
   const [scratchpadVals, setScratchpadVals] = useState(scratchpadCats.map((c) => c.label))
   const [listsVals, setListsVals] = useState(listsCats.map((c) => c.label))
@@ -73,9 +67,6 @@ export default function SettingsModal({ onClose, onOpenSyncLog }: Props) {
   const [selectedIp, setSelectedIp] = useState('')
   const [staleIpWarning, setStaleIpWarning] = useState('')
   const [debugLogVal, setDebugLogVal] = useState(debugLog)
-  const [syncConfirmVal, setSyncConfirmVal] = useState(syncConfirmation)
-  const [autoSyncEnabledVal, setAutoSyncEnabledVal] = useState(autoSyncEnabledStore)
-  const [autoSyncDelayVal, setAutoSyncDelayVal] = useState(autoSyncDelaySecStore)
 
 
   useEffect(() => {
@@ -148,9 +139,6 @@ export default function SettingsModal({ onClose, onOpenSyncLog }: Props) {
     window.electronAPI.setPairingSecret(pairingSecret)
     setSyncInterfaceIpStore(selectedIp)
     setDebugLogStore(debugLogVal)
-    setSyncConfirmationStore(syncConfirmVal)
-    setAutoSyncEnabledStore(autoSyncEnabledVal)
-    setAutoSyncDelaySecStore(autoSyncDelayVal)
     onClose()
   }
 
@@ -354,13 +342,8 @@ export default function SettingsModal({ onClose, onOpenSyncLog }: Props) {
             staleIpWarning={staleIpWarning}
             setStaleIpWarning={setStaleIpWarning}
             pairingSecret={pairingSecret}
-            autoSyncEnabled={autoSyncEnabledVal}
-            setAutoSyncEnabled={setAutoSyncEnabledVal}
-            autoSyncDelaySec={autoSyncDelayVal}
-            setAutoSyncDelaySec={setAutoSyncDelayVal}
             styles={styles}
             colors={colors}
-            sp={sp}
           />
 
           <div style={styles.divider} />
@@ -441,12 +424,9 @@ export default function SettingsModal({ onClose, onOpenSyncLog }: Props) {
 
           <div style={styles.divider} />
 
-          <SyncConfirmationSection
-            syncConfirmationVal={syncConfirmVal}
-            setSyncConfirmationVal={setSyncConfirmVal}
+          <SyncHistorySection
             onOpenSyncLog={() => { onClose(); onOpenSyncLog() }}
             styles={styles}
-            sp={sp}
           />
 
 

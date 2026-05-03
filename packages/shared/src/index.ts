@@ -88,14 +88,10 @@ export {
   parseMessage,
 } from './sync/protocol';
 
-// Sync merge
-export { mergeItems, mergeCategories } from './sync/merge';
-export { mergeStateSync } from './sync/stateMerge';
-export type { MergeStores } from './sync/stateMerge';
-
 // Sync report
 export { computeSyncReport, formatSyncReport } from './sync/syncReport';
 export type {
+  MergeStores,
   SyncReport,
   SyncSideReport,
   SyncReportCategoryChange,

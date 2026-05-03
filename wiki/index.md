@@ -50,10 +50,10 @@ Computer-side organization. Tag a jot with a label, and its text, images, files,
 Full reference for all phone app settings — sync, screen lock, accent color, font size, categories, debug logging.
 
 ### [Computer Settings](computer-settings.md)
-Full reference for all computer app settings — network sync, accent color, font size, categories, save folder, backup, debug logging, sync confirmation.
+Full reference for all computer app settings: network sync, accent color, font size, categories, save folder, backup, debug logging, sync history.
 
-### [Sync Confirmation & History](computer-settings-sync-history.md)
-Preview dialog, merge/override options, big divergence detection, 60-second timeout, and sync history viewer.
+### [Sync Preview & History](computer-settings-sync-history.md)
+The mandatory SYNC PREVIEW dialog (DESKTOP WINS / PHONE WINS / CANCEL with a 60-second auto-cancel) and the sync history viewer.
 
 ###  [Palette Theming](theming.md)
 HSL-based accent color with a grayscale desaturation slider.  Default: desaturated steel blue (hue 205, grayscale 75).

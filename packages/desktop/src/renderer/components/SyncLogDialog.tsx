@@ -107,7 +107,6 @@ function ReportDetail({ report, colors }: { report: SyncReport; colors: any }) {
     <div>
       <SideDetail side={report.phoneOnly} label="PHONE HAS (desktop does not)" colors={colors} />
       <SideDetail side={report.desktopOnly} label="DESKTOP HAS (phone does not)" colors={colors} />
-      <SideDetail side={report.desktopResult} label="DESKTOP AFTER MERGE" colors={colors} />
     </div>
   )
 }
@@ -275,8 +274,8 @@ export default function SyncLogDialog({ onClose }: Props) {
   // Build a one-line summary for the list
   function briefSummary(report: SyncReport): string {
     if (report.isEmpty) return 'No changes'
-    // Aggregate across all three sides
-    const sides = [report.desktopResult, report.phoneOnly, report.desktopOnly].filter(Boolean)
+    // Aggregate across both sides
+    const sides = [report.phoneOnly, report.desktopOnly].filter(Boolean)
     let added = 0, deleted = 0, modified = 0, reordered = 0, checked = 0, scratchpad = 0, renamed = 0
     for (const s of sides) {
       added += s.totalAdded

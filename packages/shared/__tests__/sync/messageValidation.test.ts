@@ -46,6 +46,18 @@ describe('parseMessage field validation — rejection cases', () => {
     }))).toBeNull()
   })
 
+  it("sync_confirm with mode 'merge' → null (legacy merge mode removed)", () => {
+    expect(parseMessage(JSON.stringify({
+      type: 'sync_confirm', mode: 'merge',
+    }))).toBeNull()
+  })
+
+  it('sync_confirm with unknown mode → null', () => {
+    expect(parseMessage(JSON.stringify({
+      type: 'sync_confirm', mode: 'tie-break',
+    }))).toBeNull()
+  })
+
 })
 
 describe('parseMessage field validation — acceptance (sanity checks)', () => {

@@ -29,7 +29,7 @@ describe('writeJotFiles — recordings', () => {
       jots: [{ id: 1, text: 'hello', drawing: null, images: [], recordings: [] }],
     }
 
-    const result = writeJotFiles(response, '/tmp/test')
+    const result = writeJotFiles(response, '/tmp/test', 'TEST_TAG')
     expect(result.success).toBe(true)
     expect(result.jotCount).toBe(1)
 
@@ -51,7 +51,7 @@ describe('writeJotFiles — recordings', () => {
       }],
     }
 
-    const result = writeJotFiles(response, '/tmp/test')
+    const result = writeJotFiles(response, '/tmp/test', 'TEST_TAG')
     expect(result.success).toBe(true)
 
     const writeCalls = vi.mocked(writeFileSync).mock.calls
@@ -77,7 +77,7 @@ describe('writeJotFiles — recordings', () => {
       }],
     }
 
-    const result = writeJotFiles(response, '/tmp/test')
+    const result = writeJotFiles(response, '/tmp/test', 'TEST_TAG')
     expect(result.success).toBe(true)
 
     const writeCalls = vi.mocked(writeFileSync).mock.calls
@@ -100,7 +100,7 @@ describe('writeJotFiles — recordings', () => {
       }],
     }
 
-    const result = writeJotFiles(response, '/tmp/test')
+    const result = writeJotFiles(response, '/tmp/test', 'TEST_TAG')
     expect(result.success).toBe(true)
     expect(result.jotCount).toBe(1)
 

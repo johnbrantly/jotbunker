@@ -1,13 +1,21 @@
 # JotBunker Changelog
 
+## [v1.0.7] - 2026-05- 02
+- Android: updated adaptive-icon.png with more padding for proper logo image centering
+- Mobile: fix drag-and-hold gesture missing on Lists / Locked Lists by memoizing RowItem
+- Sync: replace LWW (Last-Write-Wins) merge for Lists / Locked Lists / Scratchpad with mandatory user choice on every sync (DESKTOP WINS / PHONE WINS / CANCEL, 60-second auto-cancel). Jots sync is unchanged.
+- Settings: removed the "SYNC CONFIRMATION OFF/ON" toggle (sync now always prompts); the section becomes "SYNC HISTORY" and keeps the VIEW SYNC HISTORY button
+- Sync simplification after daily use test/hardening: removed all auto-connect and auto-sync features. Phone no longer auto-connects on app open or foreground; user taps Connect. Phone settings "Auto-connect" and "Sync on auto-connect" toggles removed. Computer "AUTO SYNC" toggle and delay slider removed. Connecting no longer triggers an automatic state exchange; sync only happens when the user clicks SYNC NOW on the computer. Keep Awake feature unchanged.
 
- ## [v1.0.6] - 2026-04-20
 
-  **Desktop-only release.** 
-  - Fix Windows installer firewall rule: scoped to `LocalSubnet` across Domain, Private, and Public profiles
-  - Upgrade self-heal: existing 1.0.1-1.0.5 installs (which shipped `profile=any` with no remote-IP restriction) silently
-  - Updated installer consent prompt text to accurately describe the `LocalSubnet` scope
-  - Wiki: new firewall-rule verification section, four-entry deviations list, tightening guide in Security docs
+## [v1.0.6] - 2026-04-20
+
+**Desktop-only release.** 
+
+- Fix Windows installer firewall rule: scoped to `LocalSubnet` across Domain, Private, and Public profiles
+- Upgrade self-heal: existing 1.0.1-1.0.5 installs (which shipped `profile=any` with no remote-IP restriction) silently
+- Updated installer consent prompt text to accurately describe the `LocalSubnet` scope
+- Wiki: new firewall-rule verification section, four-entry deviations list, tightening guide in Security docs
 
 ## [v1.0.5] - 2026-04-19
 

@@ -68,7 +68,6 @@ export interface Handshake {
   deviceId: string;
   lastSyncTimestamp: number;
   pairingSecret: string;
-  autoSync?: boolean;
 }
 
 export interface StateSync {
@@ -196,13 +195,11 @@ export interface DebugLogMessage {
   lines: string[];
 }
 
-export type SyncConfirmMode = 'merge' | 'desktop-wins' | 'phone-wins';
+export type SyncConfirmMode = 'desktop-wins' | 'phone-wins';
 
 export interface SyncConfirm {
   type: 'sync_confirm';
   mode: SyncConfirmMode;
-  /** When mode is 'merge', desktop sends the merged result so phone applies it directly */
-  mergedState?: StateSync;
 }
 
 export interface SyncCancel {
@@ -255,7 +252,7 @@ const MESSAGE_VALIDATORS: Record<SyncMessageType, (m: Record<string, unknown>) =
   jot_meta_response:     (m) => isObj(m.jot) && isNum((m.jot as Record<string, unknown>).id),
   jot_manifest:          (m) => isArr(m.jots),
   debug_log:             (m) => isArr(m.lines),
-  sync_confirm:          (m) => isStr(m.mode) && ['merge', 'desktop-wins', 'phone-wins'].includes(m.mode as string),
+  sync_confirm:          (m) => isStr(m.mode) && ['desktop-wins', 'phone-wins'].includes(m.mode as string),
   sync_cancel:           ()  => true,
   state_sync:            (m) => isArr(m.lists) && isArr(m.lockedLists) && isArr(m.listsCategories) && isArr(m.lockedListsCategories) && isNum(m.since),
 };

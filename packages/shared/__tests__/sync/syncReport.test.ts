@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { computeSyncReport, formatSyncReport } from '../../src/sync/syncReport'
-import type { MergeStores } from '../../src/sync/stateMerge'
+import type { MergeStores } from '../../src/sync/syncReport'
 import type { StateSync } from '../../src/sync/protocol'
 import type { ListItem, Category } from '../../src/types'
 import { CATEGORY_COUNT } from '../../src/constants'
@@ -59,16 +59,12 @@ function makeRemote(overrides: Partial<StateSync> = {}): StateSync {
 
 describe('computeSyncReport', () => {
   it('returns isEmpty: true when both sides are identical', () => {
-    const local = emptyLocal()
-    const remote = makeRemote()
-    const merged = emptyLocal()
-    const report = computeSyncReport(local, remote, merged)
+    const report = computeSyncReport(emptyLocal(), makeRemote())
     expect(report.isEmpty).toBe(true)
-    expect(report.isBigDivergence).toBe(false)
   })
 
   it('has a numeric timestamp', () => {
-    const report = computeSyncReport(emptyLocal(), makeRemote(), emptyLocal())
+    const report = computeSyncReport(emptyLocal(), makeRemote())
     expect(typeof report.timestamp).toBe('number')
     expect(report.timestamp).toBeGreaterThan(0)
   })
@@ -78,129 +74,54 @@ describe('computeSyncReport', () => {
     const phoneItems = emptySlots()
     phoneItems[0] = [makeItem({ id: 'p1', text: 'phone item' })]
     const remote = makeRemote({ lists: phoneItems })
-    const merged = emptyLocal()
 
-    const report = computeSyncReport(local, remote, merged)
-    expect(report.phoneOnly.isEmpty).toBe(false)
-    expect(report.phoneOnly.totalAdded).toBeGreaterThan(0)
+    const report = computeSyncReport(local, remote)
+    // The diff is symmetric: phoneOnly frames the item as an addition (from
+    // local's perspective), desktopOnly frames it as a deletion (from phone's
+    // perspective). Both sides report the divergence; the dialog labels make
+    // it clear which side the item lives on.
+    expect(report.phoneOnly.totalAdded).toBe(1)
+    expect(report.desktopOnly.totalDeleted).toBe(1)
   })
 
   it('detects items desktop has that phone does not', () => {
     const local = emptyLocal()
     local.lists.items[0] = [makeItem({ id: 'd1', text: 'desktop item' })]
     const remote = makeRemote()
-    const merged = emptyLocal()
 
-    const report = computeSyncReport(local, remote, merged)
-    expect(report.desktopOnly.isEmpty).toBe(false)
-    expect(report.desktopOnly.totalAdded).toBeGreaterThan(0)
+    const report = computeSyncReport(local, remote)
+    // Symmetric framing: desktopOnly shows it as added (from phone's view),
+    // phoneOnly shows it as deleted (from desktop's view).
+    expect(report.desktopOnly.totalAdded).toBe(1)
+    expect(report.phoneOnly.totalDeleted).toBe(1)
   })
 
-  it('detects merge result changes on desktop', () => {
-    const local = emptyLocal()
-    const merged = emptyLocal()
-    merged.lists.items[0] = [makeItem({ id: 'new1', text: 'merged in' })]
-
-    const report = computeSyncReport(local, makeRemote(), merged)
-    expect(report.desktopResult.isEmpty).toBe(false)
-    expect(report.desktopResult.totalAdded).toBe(1)
-  })
-
-  it('detects item text modification', () => {
-    const local = emptyLocal()
-    local.lists.items[0] = [makeItem({ id: 'a', text: 'old text' })]
-    const merged = emptyLocal()
-    merged.lists.items[0] = [makeItem({ id: 'a', text: 'new text' })]
-
-    const report = computeSyncReport(local, makeRemote(), merged)
-    expect(report.desktopResult.totalModified).toBe(1)
-  })
-
-  it('detects item checked/unchecked toggle', () => {
-    const local = emptyLocal()
-    local.lists.items[0] = [makeItem({ id: 'a', text: 'task', done: false })]
-    const merged = emptyLocal()
-    merged.lists.items[0] = [makeItem({ id: 'a', text: 'task', done: true })]
-
-    const report = computeSyncReport(local, makeRemote(), merged)
-    expect(report.desktopResult.totalChecked).toBe(1)
-  })
-
-  it('detects item reorder', () => {
-    const local = emptyLocal()
-    local.lists.items[0] = [
-      makeItem({ id: 'a', text: 'first', position: 0 }),
-      makeItem({ id: 'b', text: 'second', position: 1 }),
-    ]
-    const merged = emptyLocal()
-    merged.lists.items[0] = [
-      makeItem({ id: 'b', text: 'second', position: 0 }),
-      makeItem({ id: 'a', text: 'first', position: 1 }),
-    ]
-
-    const report = computeSyncReport(local, makeRemote(), merged)
-    expect(report.desktopResult.totalReordered).toBeGreaterThan(0)
-  })
-
-  it('detects category label changes in lists', () => {
+  it('detects category label divergence', () => {
     const local = emptyLocal()
     local.lists.categories[0] = makeCat({ label: 'Old', section: 'lists' })
-    const merged = emptyLocal()
-    merged.lists.categories[0] = makeCat({ label: 'New', section: 'lists' })
+    const remoteCats = defaultCats()
+    remoteCats[0] = makeCat({ label: 'New', section: 'lists' })
+    const remote = makeRemote({ listsCategories: remoteCats })
 
-    const report = computeSyncReport(local, makeRemote(), merged)
-    expect(report.desktopResult.categoryChanges.length).toBeGreaterThan(0)
-    expect(report.desktopResult.categoryChanges[0].oldLabel).toBe('Old')
-    expect(report.desktopResult.categoryChanges[0].newLabel).toBe('New')
+    const report = computeSyncReport(local, remote)
+    // Phone has "New", desktop has "Old"; both sides see a rename of the other's value
+    const phoneCat = report.phoneOnly.categoryChanges.find((c) => c.section === 'lists')
+    const desktopCat = report.desktopOnly.categoryChanges.find((c) => c.section === 'lists')
+    expect(phoneCat).toBeDefined()
+    expect(phoneCat!.newLabel).toBe('New')
+    expect(desktopCat).toBeDefined()
+    expect(desktopCat!.newLabel).toBe('Old')
   })
 
-  it('detects scratchpad content changes', () => {
+  it('detects scratchpad content divergence', () => {
     const local = emptyLocal()
-    const merged = emptyLocal()
-    merged.scratchpad.contents[0] = { content: 'new note', updatedAt: 2000 }
+    const remoteScratchpad = emptyScratchpad()
+    remoteScratchpad[0] = { content: 'phone note', updatedAt: 2000 }
+    const remote = makeRemote({ scratchpad: remoteScratchpad })
 
-    const report = computeSyncReport(local, makeRemote(), merged)
-    expect(report.desktopResult.scratchpadChanges.length).toBe(1)
-    expect(report.desktopResult.scratchpadChanges[0].changed).toBe(true)
-  })
-
-  it('detects scratchpad category label changes', () => {
-    const local = emptyLocal()
-    local.scratchpad.categories[0] = makeCat({ label: 'Notes', section: 'scratchpad' })
-    const merged = emptyLocal()
-    merged.scratchpad.categories[0] = makeCat({ label: 'Ideas', section: 'scratchpad' })
-
-    const report = computeSyncReport(local, makeRemote(), merged)
-    const catChange = report.desktopResult.categoryChanges.find((c) => c.section === 'scratchpad')
-    expect(catChange).toBeDefined()
-    expect(catChange!.oldLabel).toBe('Notes')
-    expect(catChange!.newLabel).toBe('Ideas')
-  })
-
-  it('flags isBigDivergence when >5 deletes', () => {
-    const local = emptyLocal()
-    // Put 6 items on desktop that phone doesn't have — phone "deleted" them
-    local.lists.items[0] = Array.from({ length: 6 }, (_, i) =>
-      makeItem({ id: `d${i}`, text: `item ${i}`, position: i }),
-    )
-    const merged = emptyLocal()
-    // Merged also lost them
-    const report = computeSyncReport(local, makeRemote(), merged)
-    expect(report.isBigDivergence).toBe(true)
-  })
-
-  it('flags isBigDivergence when >20 total changes', () => {
-    const local = emptyLocal()
-    const phoneItems = emptySlots()
-    // 21 items on phone that desktop doesn't have
-    phoneItems[0] = Array.from({ length: 21 }, (_, i) =>
-      makeItem({ id: `p${i}`, text: `phone item ${i}`, position: i }),
-    )
-    const remote = makeRemote({ lists: phoneItems })
-    const merged = emptyLocal()
-
-    const report = computeSyncReport(local, remote, merged)
-    expect(report.isBigDivergence).toBe(true)
+    const report = computeSyncReport(local, remote)
+    expect(report.phoneOnly.scratchpadChanges.length).toBe(1)
+    expect(report.phoneOnly.scratchpadChanges[0].changed).toBe(true)
   })
 
   it('works with lockedLists section', () => {
@@ -208,9 +129,8 @@ describe('computeSyncReport', () => {
     const phoneItems = emptySlots()
     phoneItems[0] = [makeItem({ id: 'lk1', text: 'locked item' })]
     const remote = makeRemote({ lockedLists: phoneItems })
-    const merged = emptyLocal()
 
-    const report = computeSyncReport(local, remote, merged)
+    const report = computeSyncReport(local, remote)
     expect(report.phoneOnly.isEmpty).toBe(false)
   })
 })
@@ -219,7 +139,7 @@ describe('computeSyncReport', () => {
 
 describe('formatSyncReport', () => {
   it('returns "No changes" for empty report', () => {
-    const report = computeSyncReport(emptyLocal(), makeRemote(), emptyLocal())
+    const report = computeSyncReport(emptyLocal(), makeRemote())
     expect(formatSyncReport(report)).toBe('No changes')
   })
 
@@ -229,7 +149,7 @@ describe('formatSyncReport', () => {
     phoneItems[0] = [makeItem({ id: 'p1', text: 'phone only' })]
     const remote = makeRemote({ lists: phoneItems })
 
-    const report = computeSyncReport(local, remote, emptyLocal())
+    const report = computeSyncReport(local, remote)
     const formatted = formatSyncReport(report)
     expect(formatted).toContain('PHONE HAS')
   })
@@ -238,59 +158,40 @@ describe('formatSyncReport', () => {
     const local = emptyLocal()
     local.lists.items[0] = [makeItem({ id: 'd1', text: 'desktop only' })]
 
-    const report = computeSyncReport(local, makeRemote(), emptyLocal())
+    const report = computeSyncReport(local, makeRemote())
     const formatted = formatSyncReport(report)
     expect(formatted).toContain('DESKTOP HAS')
   })
 
-  it('includes DESKTOP AFTER MERGE header when merge produces changes', () => {
-    const local = emptyLocal()
-    const merged = emptyLocal()
-    merged.lists.items[0] = [makeItem({ id: 'new1', text: 'merged' })]
-
-    const report = computeSyncReport(local, makeRemote(), merged)
-    const formatted = formatSyncReport(report)
-    expect(formatted).toContain('DESKTOP AFTER MERGE')
-  })
-
   it('formats added items with +', () => {
     const local = emptyLocal()
-    const merged = emptyLocal()
-    merged.lists.items[0] = [makeItem({ id: 'a1', text: 'new item' })]
+    const phoneItems = emptySlots()
+    phoneItems[0] = [makeItem({ id: 'a1', text: 'new item' })]
+    const remote = makeRemote({ lists: phoneItems })
 
-    const report = computeSyncReport(local, makeRemote(), merged)
+    const report = computeSyncReport(local, remote)
     const formatted = formatSyncReport(report)
     expect(formatted).toContain('+ "new item"')
   })
 
-  it('formats deleted items with -', () => {
+  it('formats deleted items with - (from the other side\'s perspective)', () => {
     const local = emptyLocal()
     local.lists.items[0] = [makeItem({ id: 'd1', text: 'gone item' })]
-    const merged = emptyLocal()
 
-    const report = computeSyncReport(local, makeRemote(), merged)
+    const report = computeSyncReport(local, makeRemote())
     const formatted = formatSyncReport(report)
-    expect(formatted).toContain('- "gone item"')
-  })
-
-  it('formats modified items with ~', () => {
-    const local = emptyLocal()
-    local.lists.items[0] = [makeItem({ id: 'm1', text: 'old text' })]
-    const merged = emptyLocal()
-    merged.lists.items[0] = [makeItem({ id: 'm1', text: 'new text' })]
-
-    const report = computeSyncReport(local, makeRemote(), merged)
-    const formatted = formatSyncReport(report)
-    expect(formatted).toContain('~ "old text" → "new text"')
+    // Desktop has "gone item", phone doesn't, so DESKTOP HAS shows it as added
+    expect(formatted).toContain('+ "gone item"')
   })
 
   it('truncates long text at 40 characters', () => {
     const longText = 'A'.repeat(50)
     const local = emptyLocal()
-    const merged = emptyLocal()
-    merged.lists.items[0] = [makeItem({ id: 'long1', text: longText })]
+    const phoneItems = emptySlots()
+    phoneItems[0] = [makeItem({ id: 'long1', text: longText })]
+    const remote = makeRemote({ lists: phoneItems })
 
-    const report = computeSyncReport(local, makeRemote(), merged)
+    const report = computeSyncReport(local, remote)
     const formatted = formatSyncReport(report)
     expect(formatted).toContain('A'.repeat(40) + '...')
     expect(formatted).not.toContain('A'.repeat(50))

@@ -12,7 +12,7 @@ Four tabs across the bottom:
 - **Locked Lists** — biometric-gated reference lists ([details](locked-lists.md))
 - **Scratchpads** — freeform text by category ([details](scratchpads.md))
 
-Top bar shows sync status (DISCONNECTED / CONNECTING / CONNECTED), a Sync button, and a settings gear. Auto-connect and auto-sync can be enabled in settings.
+Top bar shows sync status (DISCONNECTED / CONNECTING / CONNECTED), a Sync button, and a settings gear. The user must explicitly tap the Sync button to connect; the phone never auto-connects on launch or foreground.
 
 ## First launch
 

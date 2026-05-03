@@ -1,45 +1,27 @@
-# Sync Confirmation & History
+# Sync Preview & History
 
-The sync confirmation system lets you review what will change before a sync is applied. When enabled, a preview dialog appears showing exactly what each device has and what the merged result will look like.
-
----
-
-## Enabling Sync Confirmation
-
-Toggle **SYNC CONFIRMATION** to ON in [Computer Settings](computer-settings.md). When enabled, every manual sync pauses to show a preview dialog before applying changes. When disabled, syncs apply immediately with the default LWW merge — no preview, no warning, no override options, even if the divergence is large.
-
-Auto-sync (when enabled) always skips the confirmation dialog regardless of this setting — it syncs silently in the background.
-
-**Note:** Big divergence detection (>5 deletions or >20 total changes) only affects the confirmation dialog UI — it has no effect on the merge itself. If confirmation is disabled, a large divergence merges silently just like a small one. Enable sync confirmation if you want a safety net after extended offline periods on either device.
+Every sync on the computer goes through a mandatory SYNC PREVIEW dialog. The user picks which side wins; the losing side is replaced wholesale. Recent syncs are recorded in a history viewer for after-the-fact review.
 
 ---
 
-## Sync Preview Dialog
+## SYNC PREVIEW dialog
 
-When a sync is initiated and confirmation is enabled, the dialog appears with:
+When the user clicks SYNC NOW on the computer and the diff is non-empty, the dialog blocks until the user picks an option or the 60-second timer auto-cancels.
 
 ### Title and timer
 
 - **Title:** "SYNC PREVIEW"
-- **Countdown:** "Auto-cancel in {seconds}s" — 60-second timeout. If no action is taken, the sync is automatically cancelled.
-
-### Big divergence warning
-
-If the sync involves more than 5 deletions or more than 20 total changes, a warning appears:
-
-> **LARGE DIVERGENCE DETECTED**
-
-This also unlocks additional resolution options (see buttons below).
+- **Countdown:** "Auto-cancel in {seconds}s" (60-second timeout)
+- **Subtitle:** A short reminder that Lists, Locked Lists, and Scratchpad will be replaced wholesale on the losing side, and that Jots are unaffected
 
 ### Report body
 
-The report shows three perspectives on the sync:
+Two sections, each only rendered if non-empty:
 
 | Section | What it shows |
 |---|---|
-| **PHONE HAS** (computer does not) | Items that exist on the phone but are missing from the computer |
-| **COMPUTER HAS** (phone does not) | Items that exist on the computer but are missing from the phone |
-| **COMPUTER AFTER MERGE** | What the computer's state will look like after the merge is applied |
+| **PHONE HAS** (computer does not) | Items, categories, and scratchpad content the phone has that the computer does not |
+| **COMPUTER HAS** (phone does not) | Items, categories, and scratchpad content the computer has that the phone does not |
 
 Within each section, changes are grouped by data type (LISTS, LOCKED LISTS, SCRATCHPAD) and then by category. Each change is shown with a symbol and the item text (truncated to 50 characters):
 
@@ -51,57 +33,43 @@ Within each section, changes are grouped by data type (LISTS, LOCKED LISTS, SCRA
 | `☑` / `☐` | Gray | Item checked or unchecked |
 | `↕` | Purple | Item reordered |
 
-Category renames are shown as: `Old Name → New Name` (orange)
+Category renames are shown as: `Old Name → New Name` (orange).
 
-Scratchpad changes are shown as: `[Category Name] content changed`
-
-If both devices are identical, the body shows: "Nothing to sync — Phone and Computer identical"
+Scratchpad changes are shown as: `[Category Name] content changed`.
 
 ### Buttons
 
-**Normal sync** (divergence within thresholds):
-
 | Button | Action |
 |---|---|
-| CANCEL | Aborts the sync. No changes applied to either device |
-| SYNC | Applies the standard Last-Write-Wins merge |
+| CANCEL | Aborts the sync. No changes applied to either device. `lastSyncTimestamp` is not updated |
+| DESKTOP WINS | Computer keeps its state; phone replaces its lists / locked lists / scratchpad wholesale with the computer's state |
+| PHONE WINS | Phone keeps its state; computer replaces its lists / locked lists / scratchpad wholesale with the phone's state |
 
-**Big divergence** (>5 deletions or >20 total changes):
+### Empty syncs
 
-| Button | Action |
-|---|---|
-| CANCEL | Aborts the sync |
-| COMPUTER WINS | Computer keeps its state. Phone receives the computer's state and overwrites its own |
-| PHONE WINS | Phone keeps its state. Computer adopts the phone's state entirely |
-| MERGE | Applies the standard Last-Write-Wins merge (same as SYNC) |
-
-**Empty sync** (no differences):
-
-| Button | Action |
-|---|---|
-| OK | Closes the dialog |
+If both sides are identical (no diff), the dialog is skipped entirely. The sync completes silently and `lastSyncTimestamp` is updated.
 
 ### Timeout
 
-The dialog auto-cancels after **60 seconds** with no user interaction. The countdown is displayed in the dialog header.
+After 60 seconds with no input, `respond('cancel')` fires automatically. This sends a `sync_cancel` to the phone, both sides keep their pre-sync state, and `lastSyncTimestamp` is not updated. The devices remain connected; only the sync exchange is aborted.
 
 ---
 
 ## Sync History
 
-Accessed via the **VIEW SYNC HISTORY** button in the Sync Confirmation section of [Computer Settings](computer-settings.md).
+Accessed via the **VIEW SYNC HISTORY** button in the Sync History section of [Computer Settings](computer-settings.md).
 
 ### History list
 
 - Stores the last **10** sync reports (newest first)
 - Each entry shows:
-  - **Timestamp** — formatted as `"Apr 12 14:35"`
-  - **Summary** — aggregated counts like `"+3, -2, 5 mod, 2 toggled"` or `"No changes"`
+  - **Timestamp** formatted as `Apr 12 14:35`
+  - **Summary** with aggregated counts like `+3, -2, 5 mod, 2 toggled` or `No changes`
 - Click an entry to view its full report detail
 
 ### Detail view
 
-When an entry is selected, the full report is displayed below the list with the same three-section layout as the Sync Preview Dialog (PHONE HAS, COMPUTER HAS, COMPUTER AFTER MERGE).
+When an entry is selected, the full report is displayed below the list with two sections: PHONE HAS (computer does not) and COMPUTER HAS (phone does not).
 
 ### Legend
 
@@ -113,23 +81,22 @@ A color legend is shown at the top of the dialog:
 
 ### Clear history
 
-- **CLEAR HISTORY** button (red) — appears when entries exist
+- **CLEAR HISTORY** button (red) appears when entries exist
 - Shows confirmation: "Clear Sync History? This will delete all sync history entries. This cannot be undone."
 
 ---
 
-## How the Report is Generated
+## How the report is generated
 
-When a sync is triggered:
+When SYNC NOW runs:
 
-1. The computer takes a snapshot of its current state (lists, locked lists, scratchpad)
-2. The phone sends its current state
-3. The computer computes what the merged result would be
-4. Three comparisons are generated:
-   - **phoneOnly**: phone state vs computer state (what phone has that computer doesn't)
-   - **desktopOnly**: computer state vs phone state (what computer has that phone doesn't)
-   - **desktopResult**: computer state vs merged state (what will change on the computer)
-5. The report is saved to sync history regardless of whether the user confirms or cancels
+1. Computer takes a snapshot of its current state (lists, locked lists, scratchpad)
+2. Phone sends its current state over the encrypted channel
+3. Computer computes a diff between the two pre-sync states
+4. Two perspectives are generated:
+   - **phoneOnly**: items the phone has that the computer doesn't
+   - **desktopOnly**: items the computer has that the phone doesn't
+5. The report is saved to sync history, regardless of whether the user picks a side or cancels
 
 ### Item diff logic
 
@@ -139,23 +106,6 @@ For each category slot, items are compared by ID:
 - **Modified**: same ID, different text
 - **Checked**: same ID, different done state
 - **Reordered**: same IDs but in a different order (only reported when more than 1 item moved)
-
-### Big divergence thresholds
-
-| Threshold | Value |
-|---|---|
-| Deletions | More than 5 across all sides |
-| Total changes | More than 20 (added + deleted + modified + checked) across all sides |
-
-Either threshold triggers the "LARGE DIVERGENCE DETECTED" warning and unlocks the COMPUTER WINS / PHONE WINS buttons.
-
----
-
-## Auto-Sync and Confirmation
-
-When [auto-sync](computer-settings.md#auto-sync) is enabled, syncs triggered by the debounce timer always skip the confirmation dialog — they use the `skipConfirmation` flag internally. The flag is reset after each sync. The report is still generated and saved to sync history, so you can review what happened via VIEW SYNC HISTORY.
-
-The computer's top chrome shows "Auto-synced" (vs "Synced") to distinguish auto-triggered syncs from manual ones.
 
 ---
 

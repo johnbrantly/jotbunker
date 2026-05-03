@@ -12,7 +12,7 @@ On either device, go to Settings and toggle **Debug Logging** on. On the compute
 
 Computer writes to `%APPDATA%\JotBunker\debug-logs\`:
 
-- **`desktop-sync.log`** — events from the computer's perspective (connection, merge, phase transitions)
+- **`desktop-sync.log`** — events from the computer's perspective (connection, state exchange, phase transitions)
 - **`phone-sync.log`** — events from the phone's perspective (sent to computer over the encrypted sync channel)
 
 Both files are overwritten each session (prefixed with `=== Session {timestamp} ===`).
@@ -25,9 +25,11 @@ Both files are overwritten each session (prefixed with `=== Session {timestamp} 
 
 Tags indicate the subsystem:
 - `CONN` — connection events (phone connected/disconnected, key exchange, handshake)
-- `ENGINE` — phase transitions (idle → connecting → key_exchange → handshake → syncing → docked)
-- `STATE` — state sync messages (what each side sent)
-- `MERGE` — merge results per category (items added, conflicts, deletions)
+- `ENGINE` — phase transitions (idle → connecting → key_exchange → handshake → syncing → docked). The `syncing` phase is only entered by the computer briefly between key exchange and handshake; the phone goes directly from `handshake` to `docked`
+- `STATE` — state sync messages (what each side sent, which side the user picked, cancel/timeout)
+- `CLEAR` — jot clear acks
+- `FILE` — single-file responses
+- `META` — single-jot metadata responses
 - `MANIFEST` — jot manifest (media ID summary)
 
 ## Reading the logs

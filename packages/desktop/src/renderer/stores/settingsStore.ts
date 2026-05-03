@@ -24,14 +24,8 @@ interface SettingsState {
   setTagRootPath: (path: string) => void
   debugLog: boolean
   setDebugLog: (v: boolean) => void
-  syncConfirmation: boolean
-  setSyncConfirmation: (v: boolean) => void
   pairingSecret: string
   setPairingSecret: (secret: string) => void
-  autoSyncEnabled: boolean
-  setAutoSyncEnabled: (v: boolean) => void
-  autoSyncDelaySec: number
-  setAutoSyncDelaySec: (n: number) => void
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -57,29 +51,25 @@ export const useSettingsStore = create<SettingsState>()(
       setTagRootPath: (path) => set({ tagRootPath: path }),
       debugLog: false,
       setDebugLog: (v) => set({ debugLog: v }),
-      syncConfirmation: false,
-      setSyncConfirmation: (v) => set({ syncConfirmation: v }),
       pairingSecret: '',
       setPairingSecret: (secret) => set({ pairingSecret: secret }),
-      autoSyncEnabled: false,
-      setAutoSyncEnabled: (v) => set({ autoSyncEnabled: v }),
-      autoSyncDelaySec: 30,
-      setAutoSyncDelaySec: (n) => set({ autoSyncDelaySec: n }),
     }),
     {
       name: 'jotbunker-settings',
       storage: createJSONStorage(() => ipcStorage),
-      version: 3,
+      version: 5,
       migrate: (persisted: any, version: number) => {
         if (version === 0) {
           persisted.setupComplete = true
         }
-        if (version < 2) {
-          persisted.syncConfirmation = false
+        if (version < 4) {
+          // Sync now always prompts the user to pick a side; the toggle is gone.
+          delete persisted.syncConfirmation
         }
-        if (version < 3) {
-          persisted.autoSyncEnabled = false
-          persisted.autoSyncDelaySec = 30
+        if (version < 5) {
+          // Auto-sync feature removed; strip stale keys.
+          delete persisted.autoSyncEnabled
+          delete persisted.autoSyncDelaySec
         }
         return persisted
       },

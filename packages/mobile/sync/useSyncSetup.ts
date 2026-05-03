@@ -3,15 +3,11 @@ import { Alert, AppState } from 'react-native';
 import * as Device from 'expo-device';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import type {
-  SyncWireMessage,
   StateSync,
-  SyncConfirm,
   MobileSyncPlatform,
 } from '@jotbunker/shared';
 import {
   SyncEngine,
-  mergeStateSync,
-  CATEGORY_COUNT,
   setSyncLogEnabled,
   setSyncLogSink,
 } from '@jotbunker/shared';
@@ -109,63 +105,21 @@ function buildMobilePlatform(
       pendingDesktopState = null;
 
       if (msg.mode === 'phone-wins') {
-        // Phone keeps its state — nothing to do
+        // Phone keeps its state; nothing to do.
         lastSyncTimestamp = Date.now();
         AsyncStorage.setItem(SYNC_TS_KEY, lastSyncTimestamp.toString());
         return;
       }
 
-      if (msg.mode === 'desktop-wins') {
-        // Replace phone state entirely with desktop's data
-        useListsStore.setState({ items: ss.lists, categories: ss.listsCategories });
-        useLockedListsStore.setState({ items: ss.lockedLists, categories: ss.lockedListsCategories });
-        if (ss.scratchpad) {
-          useScratchpadStore.setState({ contents: ss.scratchpad });
-        }
-        if (ss.scratchpadCategories) {
-          useScratchpadStore.setState({ categories: ss.scratchpadCategories });
-        }
-        lastSyncTimestamp = Date.now();
-        AsyncStorage.setItem(SYNC_TS_KEY, lastSyncTimestamp.toString());
-        return;
+      // desktop-wins: replace phone state entirely with desktop's data.
+      useListsStore.setState({ items: ss.lists, categories: ss.listsCategories });
+      useLockedListsStore.setState({ items: ss.lockedLists, categories: ss.lockedListsCategories });
+      if (ss.scratchpad) {
+        useScratchpadStore.setState({ contents: ss.scratchpad });
       }
-
-      // mode === 'merge' — apply desktop's merged result directly (avoids independent re-merge divergence)
-      if (msg.mergedState) {
-        const ms = msg.mergedState;
-        useListsStore.setState({ items: ms.lists, categories: ms.listsCategories });
-        useLockedListsStore.setState({ items: ms.lockedLists, categories: ms.lockedListsCategories });
-        if (ms.scratchpad) {
-          useScratchpadStore.setState({ contents: ms.scratchpad });
-        }
-        if (ms.scratchpadCategories) {
-          useScratchpadStore.setState({ categories: ms.scratchpadCategories });
-        }
-      } else {
-        // Fallback: independent merge
-        const merged = mergeStateSync(
-          {
-            lists: {
-              items: useListsStore.getState().items,
-              categories: useListsStore.getState().categories,
-            },
-            lockedLists: {
-              items: useLockedListsStore.getState().items,
-              categories: useLockedListsStore.getState().categories,
-            },
-            scratchpad: {
-              contents: useScratchpadStore.getState().contents,
-              categories: useScratchpadStore.getState().categories,
-            },
-          },
-          ss,
-          lastSyncTimestamp,
-        );
-        useListsStore.setState({ items: merged.lists.items, categories: merged.lists.categories });
-        useLockedListsStore.setState({ items: merged.lockedLists.items, categories: merged.lockedLists.categories });
-        useScratchpadStore.setState({ contents: merged.scratchpad.contents, categories: merged.scratchpad.categories });
+      if (ss.scratchpadCategories) {
+        useScratchpadStore.setState({ categories: ss.scratchpadCategories });
       }
-
       lastSyncTimestamp = Date.now();
       AsyncStorage.setItem(SYNC_TS_KEY, lastSyncTimestamp.toString());
     },
@@ -176,7 +130,6 @@ function buildMobilePlatform(
         deviceId,
         lastSyncTimestamp: lastSyncTs,
         pairingSecret: useSettingsStore.getState().syncPairingSecret,
-        autoSync: useSettingsStore.getState().autoSyncOnConnect,
       };
     },
 
@@ -261,20 +214,14 @@ export function useSyncSetup(): void {
       transportRef.current.updateConfig(syncServerIp, syncPort, syncPairingSecret);
     }
 
-    // Create engine if needed (load lastSyncTimestamp first)
+    // Create engine if needed (load lastSyncTimestamp first). User taps the
+    // Connect control to dock; we no longer auto-connect on launch.
     if (!engineRef.current) {
       AsyncStorage.getItem(SYNC_TS_KEY).then((rawTs) => {
         if (!transportRef.current) return;
         const initialTs = rawTs ? parseInt(rawTs, 10) : 0;
         const platform = buildMobilePlatform(transportRef.current, initialTs);
         engineRef.current = new SyncEngine(transportRef.current, platform);
-
-        // Auto-connect on initial launch (AppState listener only catches foreground resume)
-        const settings = useSettingsStore.getState();
-        if (settings.autoConnectOnOpen && settings.syncPairingSecret && settings.syncServerIp) {
-          useSyncStatusStore.getState().setDockState('docking');
-          engineRef.current.connect();
-        }
       });
     }
 
@@ -308,7 +255,8 @@ export function useSyncSetup(): void {
     };
   }, []);
 
-  // Background/foreground: disconnect on background, auto-connect on foreground if enabled
+  // Background/foreground: disconnect on background, release keep-awake.
+  // Foreground does NOT auto-reconnect; user taps Connect when ready.
   useEffect(() => {
     const sub = AppState.addEventListener('change', (nextState) => {
       const { dockState } = useSyncStatusStore.getState();
@@ -317,12 +265,6 @@ export function useSyncSetup(): void {
         if (dockState === 'docked' || dockState === 'docking') {
           engineRef.current?.disconnect();
           useSyncStatusStore.getState().setDockState('undocked');
-        }
-      } else if (nextState === 'active') {
-        const settings = useSettingsStore.getState();
-        if (settings.autoConnectOnOpen && settings.syncPairingSecret && settings.syncServerIp && dockState === 'undocked') {
-          useSyncStatusStore.getState().setDockState('docking');
-          engineRef.current?.connect();
         }
       }
     });

@@ -12,22 +12,14 @@ interface Props {
   staleIpWarning: string
   setStaleIpWarning: (v: string) => void
   pairingSecret: string
-  autoSyncEnabled?: boolean
-  setAutoSyncEnabled?: (v: boolean) => void
-  autoSyncDelaySec?: number
-  setAutoSyncDelaySec?: (n: number) => void
-  hideAutoSync?: boolean
   styles: Record<string, any>
   colors: Record<string, any>
-  sp?: Record<string, any>
 }
 
 export default function NetworkSyncSection({
   selectedIp, setSelectedIp, portVal, setPortVal,
   interfaces, staleIpWarning, setStaleIpWarning, pairingSecret,
-  autoSyncEnabled, setAutoSyncEnabled, autoSyncDelaySec, setAutoSyncDelaySec,
-  hideAutoSync,
-  styles, colors, sp,
+  styles, colors,
 }: Props) {
   return (
     <div style={styles.section}>
@@ -82,41 +74,6 @@ export default function NetworkSyncSection({
           secret={pairingSecret}
           colors={colors}
         />
-      )}
-      {!hideAutoSync && sp && setAutoSyncEnabled && (
-        <>
-          <div style={styles.divider} />
-          <span style={styles.sectionLabel}>AUTO SYNC</span>
-          <div style={{ display: 'flex', flexDirection: 'row', gap: 8, marginBottom: autoSyncEnabled ? 8 : 0 }}>
-            {([['OFF', false], ['ON', true]] as const).map(([label, val]) => (
-              <button
-                key={label}
-                style={{
-                  ...styles.browseBtn,
-                  ...(autoSyncEnabled === val ? { backgroundColor: sp.pillActiveBg, borderColor: sp.pillActiveBorder } : {}),
-                }}
-                onClick={() => setAutoSyncEnabled(val)}
-              >
-                <span style={styles.browseText}>{label}</span>
-              </button>
-            ))}
-          </div>
-          {autoSyncEnabled && setAutoSyncDelaySec && (
-            <>
-              <span style={styles.fieldLabel}>SYNC DELAY (SECONDS AFTER LAST EDIT)</span>
-              <div style={styles.inputRow}>
-                <input
-                  type="number"
-                  style={styles.input}
-                  value={autoSyncDelaySec}
-                  onChange={(e) => setAutoSyncDelaySec(Math.max(5, Number(e.target.value) || 30))}
-                  min={5}
-                  max={300}
-                />
-              </div>
-            </>
-          )}
-        </>
       )}
     </div>
   )

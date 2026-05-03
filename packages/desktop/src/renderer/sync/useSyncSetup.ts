@@ -6,11 +6,9 @@ import {
 } from '@jotbunker/shared'
 import { DesktopTransport } from './DesktopTransport'
 import { buildDesktopPlatform } from './desktopPlatform'
-import type { SyncStatus, DesktopPlatformHandle } from './desktopPlatform'
+import type { SyncStatus } from './desktopPlatform'
 import { useSettingsStore } from '../stores/settingsStore'
 import { useLockedListsStore } from '../stores/lockedListsStore'
-import { useListsStore } from '../stores/listsStore'
-import { useScratchpadStore } from '../stores/scratchpadStore'
 import { useJotsStore } from '../stores/jotsStore'
 
 import { BinaryQueue } from '../hooks/sync/binaryQueue'
@@ -29,8 +27,6 @@ export interface DesktopSyncState {
   isTransferring: boolean
   jotRefreshed: boolean
   lastSyncTimestamp: number
-  lastAutoSyncTimestamp: number
-  lastSyncWasAuto: boolean
   requestDownload: (jotIds: number[]) => void
   requestClear: (jotIds: number[]) => void
   requestRefresh: () => void
@@ -43,8 +39,6 @@ export function useDesktopSync(): DesktopSyncState {
   const [binarySyncStatus, setBinarySyncStatus] = useState<string | null>(null)
   const [jotRefreshed, setJotRefreshed] = useState(false)
   const [lastSyncTimestamp, setLastSyncTimestamp] = useState(0)
-  const [lastAutoSyncTimestamp, setLastAutoSyncTimestamp] = useState(0)
-  const [lastSyncWasAuto, setLastSyncWasAuto] = useState(false)
 
   const debugLog = useSettingsStore((s) => s.debugLog)
   setSyncLogEnabled(debugLog)
@@ -74,7 +68,6 @@ export function useDesktopSync(): DesktopSyncState {
   const binaryQueue = binaryQueueRef.current
 
   const engineRef = useRef<SyncEngine | null>(null)
-  const platformHandleRef = useRef<DesktopPlatformHandle | null>(null)
   const syncingRef = useRef(false)
 
   useEffect(() => {
@@ -92,8 +85,6 @@ export function useDesktopSync(): DesktopSyncState {
       setJotRefreshed,
       setLastSyncTimestamp,
     })
-
-    platformHandleRef.current = handle
 
     const engine = new SyncEngine(transport, handle.platform, { serverMode: true })
 
@@ -122,48 +113,10 @@ export function useDesktopSync(): DesktopSyncState {
   }, [])
 
   const handleRequestRefresh = useCallback(() => {
-    setLastSyncWasAuto(false)
     syncingRef.current = true
     engineRef.current?.requestRefresh()
     setTimeout(() => { syncingRef.current = false }, 500)
   }, [])
-
-  // ── Auto-sync: debounce store edits → silent sync ──
-  const autoSyncEnabled = useSettingsStore((s) => s.autoSyncEnabled)
-  const autoSyncDelaySec = useSettingsStore((s) => s.autoSyncDelaySec)
-
-  useEffect(() => {
-    if (!autoSyncEnabled) return
-
-    let timer: ReturnType<typeof setTimeout> | null = null
-    const delay = autoSyncDelaySec * 1000
-
-    const scheduleSync = () => {
-      if (syncingRef.current) return // ignore store changes from an incoming sync
-      if (timer) clearTimeout(timer)
-      timer = setTimeout(() => {
-        timer = null
-        if (engineRef.current?.currentPhase !== 'docked') return
-        syncingRef.current = true
-        platformHandleRef.current?.setSkipConfirmation(true)
-        setLastSyncWasAuto(true)
-        engineRef.current?.requestRefresh()
-        setLastAutoSyncTimestamp(Date.now())
-        setTimeout(() => { syncingRef.current = false }, 500)
-      }, delay)
-    }
-
-    const unsubs = [
-      useListsStore.subscribe(scheduleSync),
-      useLockedListsStore.subscribe(scheduleSync),
-      useScratchpadStore.subscribe(scheduleSync),
-    ]
-
-    return () => {
-      if (timer) clearTimeout(timer)
-      unsubs.forEach((u) => u())
-    }
-  }, [autoSyncEnabled, autoSyncDelaySec])
 
   return {
     syncStatus,
@@ -173,8 +126,6 @@ export function useDesktopSync(): DesktopSyncState {
     isTransferring,
     jotRefreshed,
     lastSyncTimestamp,
-    lastAutoSyncTimestamp,
-    lastSyncWasAuto,
     requestDownload: handleRequestDownload,
     requestClear: handleRequestClear,
     requestRefresh: handleRequestRefresh,

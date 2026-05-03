@@ -11,7 +11,6 @@ import type {
 } from '@jotbunker/shared'
 import {
   JOT_COUNT,
-  mergeStateSync,
   computeSyncReport,
   formatSyncReport,
   syncLog,
@@ -21,7 +20,6 @@ import { useLockedListsStore } from '../stores/lockedListsStore'
 import { useJotsStore } from '../stores/jotsStore'
 import { useScratchpadStore } from '../stores/scratchpadStore'
 import { useConsoleStore } from '../stores/consoleStore'
-import { useSettingsStore } from '../stores/settingsStore'
 import { useSyncConfirmStore } from '../stores/syncConfirmStore'
 import { useSyncHistoryStore } from '../stores/syncHistoryStore'
 import { useSaveStatusStore } from '../stores/saveStatusStore'
@@ -43,14 +41,12 @@ export interface DesktopPlatformDeps {
 
 export interface DesktopPlatformHandle {
   platform: DesktopSyncPlatform
-  setSkipConfirmation: (v: boolean) => void
 }
 
 export function buildDesktopPlatform(deps: DesktopPlatformDeps): DesktopPlatformHandle {
   const { binaryQueue, lockedListsReady, setSyncStatus, setJotRefreshed, setLastSyncTimestamp } = deps
   const api = window.electronAPI
   let hasBeenDocked = false
-  let skipConfirmation = false
 
   const platform: DesktopSyncPlatform = {
     deviceId: 'desktop',
@@ -67,10 +63,8 @@ export function buildDesktopPlatform(deps: DesktopPlatformDeps): DesktopPlatform
 
     async handleHandshake(msg, send) {
       await lockedListsReady
-      const hs = msg as { autoSync?: boolean }
-      if (hs.autoSync !== false) {
-        this.sendStateSync(send)
-      }
+      // No auto state-sync on handshake. The user explicitly initiates sync via
+      // SYNC NOW; connecting alone does not exchange list/scratchpad state.
     },
 
     sendStateSync(send) {
@@ -111,28 +105,7 @@ export function buildDesktopPlatform(deps: DesktopPlatformDeps): DesktopPlatform
         },
       }
 
-      // 2. Compute what the merge WOULD produce (both sides are pre-merge now)
-      const merged = mergeStateSync(localSnapshot, ss, this.getLastSyncTimestamp())
-
-      // 3. Generate sync report from both pre-merge states
-      const report = computeSyncReport(localSnapshot, ss, merged)
-
-      // 4. ALWAYS save report to sync history + console
-      if (!report.isEmpty) {
-        const summary = formatSyncReport(report)
-        useSyncHistoryStore.getState().addEntry(summary, report)
-      }
-
-      // 5. Determine user choice
-      type SyncChoice = 'confirm' | 'cancel' | 'desktop-wins' | 'phone-wins'
-      let choice: SyncChoice = 'confirm'
-
-      if (useSettingsStore.getState().syncConfirmation && !skipConfirmation) {
-        choice = await useSyncConfirmStore.getState().requestConfirmation(report)
-      }
-      skipConfirmation = false
-
-      // 6. Handle choice — apply state + send sync_confirm to phone
+      // 2. Phone's pre-merge state (used if user picks phone-wins)
       const phonePreState: MergeStores = {
         lists: { items: ss.lists, categories: ss.listsCategories },
         lockedLists: { items: ss.lockedLists, categories: ss.lockedListsCategories },
@@ -142,43 +115,45 @@ export function buildDesktopPlatform(deps: DesktopPlatformDeps): DesktopPlatform
         },
       }
 
+      // 3. Generate sync report. The dialog shows phoneOnly + desktopOnly so
+      //    the user can decide which side to keep.
+      const report = computeSyncReport(localSnapshot, ss)
+
+      // 4. Save report to sync history (skip empty reports)
+      if (!report.isEmpty) {
+        const summary = formatSyncReport(report)
+        useSyncHistoryStore.getState().addEntry(summary, report)
+      }
+
+      // 5. Empty report = nothing to sync. Update timestamp and exit; no prompt.
+      if (report.isEmpty) {
+        syncLog('STATE', 'No changes; sync complete (no prompt)')
+        this.setLastSyncTimestamp(Date.now())
+        return
+      }
+
+      // 6. Always prompt user. They pick a side, or cancel (or timeout = cancel).
+      type SyncChoice = 'cancel' | 'desktop-wins' | 'phone-wins'
+      const choice = (await useSyncConfirmStore.getState().requestConfirmation(report)) as SyncChoice
+
+      // 7. Apply chosen side. No merge mode.
       if (choice === 'cancel') {
-        syncLog('STATE', 'User cancelled sync')
+        syncLog('STATE', 'User cancelled sync (or timeout)')
         send({ type: 'sync_cancel' })
         return
       }
 
       if (choice === 'desktop-wins') {
         syncLog('STATE', 'User chose desktop wins')
-        // Desktop keeps its state (no change), tell phone to take desktop's data
+        // Desktop keeps its state; phone takes desktop's data via phone-side handler.
         send({ type: 'sync_confirm', mode: 'desktop-wins' })
-      } else if (choice === 'phone-wins') {
+      } else {
+        // phone-wins: desktop replaces its state with phone's pre-merge state.
         syncLog('STATE', 'User chose phone wins')
-        // Desktop takes phone's pre-merge state
         useListsStore.setState({ items: phonePreState.lists.items, categories: phonePreState.lists.categories })
         useLockedListsStore.setState({ items: phonePreState.lockedLists.items, categories: phonePreState.lockedLists.categories })
         useScratchpadStore.setState({ contents: phonePreState.scratchpad.contents, categories: phonePreState.scratchpad.categories })
         send({ type: 'sync_confirm', mode: 'phone-wins' })
-      } else {
-        // 'confirm' — normal merge
-        useListsStore.setState({ items: merged.lists.items, categories: merged.lists.categories })
-        useLockedListsStore.setState({ items: merged.lockedLists.items, categories: merged.lockedLists.categories })
-        useScratchpadStore.setState({ contents: merged.scratchpad.contents, categories: merged.scratchpad.categories })
-        const spState = useScratchpadStore.getState()
-        send({
-          type: 'sync_confirm',
-          mode: 'merge',
-          mergedState: {
-            type: 'state_sync',
-            lists: merged.lists.items,
-            lockedLists: merged.lockedLists.items,
-            listsCategories: merged.lists.categories,
-            lockedListsCategories: merged.lockedLists.categories,
-            since: 0,
-            scratchpad: spState.contents,
-            scratchpadCategories: spState.categories,
-          },
-        })
       }
 
       syncLog('STATE', `State sync complete (${choice})`)
@@ -318,7 +293,7 @@ export function buildDesktopPlatform(deps: DesktopPlatformDeps): DesktopPlatform
         setJotRefreshed(false)
         // Clear all jot data — base64 data URIs can be large, don't hold stale data
         const emptyJots: Record<number, any> = {}
-        for (let i = 1; i <= 6; i++) emptyJots[i] = { text: '', textUpdatedAt: 0, drawing: null, drawingUpdatedAt: 0, images: [], recordings: [], files: [] }
+        for (let i = 1; i <= JOT_COUNT; i++) emptyJots[i] = { text: '', textUpdatedAt: 0, drawing: null, drawingUpdatedAt: 0, images: [], recordings: [], files: [] }
         useJotsStore.setState({ jots: emptyJots, jotMetaFetched: {}, jotMetaLoading: {} })
         // Release the save mutex — any DOWNLOAD ALL in flight is dead now.
         useSaveStatusStore.getState().setSaving(false)
@@ -335,6 +310,5 @@ export function buildDesktopPlatform(deps: DesktopPlatformDeps): DesktopPlatform
 
   return {
     platform,
-    setSkipConfirmation: (v: boolean) => { skipConfirmation = v },
   }
 }

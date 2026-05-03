@@ -98,10 +98,6 @@ export default forwardRef<NetworkSyncSaveHandle, Props>(function NetworkSyncSect
   const setSyncPairingSecret = useSettingsStore((s) => s.setSyncPairingSecret);
   const dockState = useSyncStatusStore((s) => s.dockState);
   const undockFn = useSyncStatusStore((s) => s.undockFn);
-  const autoConnectOnOpen = useSettingsStore((s) => s.autoConnectOnOpen);
-  const setAutoConnectOnOpen = useSettingsStore((s) => s.setAutoConnectOnOpen);
-  const autoSyncOnConnect = useSettingsStore((s) => s.autoSyncOnConnect);
-  const setAutoSyncOnConnect = useSettingsStore((s) => s.setAutoSyncOnConnect);
   const keepAwakeEnabled = useSettingsStore((s) => s.keepAwakeEnabled);
   const setKeepAwakeEnabled = useSettingsStore((s) => s.setKeepAwakeEnabled);
   const keepAwakeMinutes = useSettingsStore((s) => s.keepAwakeMinutes);
@@ -281,41 +277,6 @@ export default forwardRef<NetworkSyncSaveHandle, Props>(function NetworkSyncSect
               <TouchableOpacity style={[styles.modifyBtn, { marginTop: 4, marginBottom: 12 }]} onPress={() => setSyncEditing(true)}>
                 <Text style={styles.modifyBtnText}>NETWORK SETTINGS</Text>
               </TouchableOpacity>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-                <Text style={{ fontSize: 13, color: colors.textSecondary }}>Auto-connect</Text>
-                <View style={{ flexDirection: 'row', gap: 6 }}>
-                  {(['OFF', 'ON'] as const).map((label) => {
-                    const active = label === 'ON' ? autoConnectOnOpen : !autoConnectOnOpen;
-                    return (
-                      <TouchableOpacity
-                        key={label}
-                        onPress={() => setAutoConnectOnOpen(label === 'ON')}
-                        style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, borderWidth: 1, borderColor: active ? colors.primary : '#444', backgroundColor: active ? colors.primary + '25' : 'transparent' }}
-                      >
-                        <Text style={{ fontSize: 10, fontWeight: '600', color: active ? colors.primary : '#666' }}>{label}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, opacity: autoConnectOnOpen ? 1 : 0.3 }}>
-                <Text style={{ fontSize: 13, color: colors.textSecondary }}>Sync on auto-connect</Text>
-                <View style={{ flexDirection: 'row', gap: 6 }}>
-                  {(['OFF', 'ON'] as const).map((label) => {
-                    const active = autoConnectOnOpen && (label === 'ON' ? autoSyncOnConnect : !autoSyncOnConnect);
-                    return (
-                      <TouchableOpacity
-                        key={label}
-                        disabled={!autoConnectOnOpen}
-                        onPress={() => setAutoSyncOnConnect(label === 'ON')}
-                        style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, borderWidth: 1, borderColor: active ? colors.primary : '#444', backgroundColor: active ? colors.primary + '25' : 'transparent' }}
-                      >
-                        <Text style={{ fontSize: 10, fontWeight: '600', color: active ? colors.primary : '#666' }}>{label}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
                 <Text style={{ fontSize: 13, color: colors.textSecondary }}>Keep awake</Text>
                 <View style={{ flexDirection: 'row', gap: 6 }}>

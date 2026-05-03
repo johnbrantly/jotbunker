@@ -6,35 +6,37 @@ Phone connects to computer over local Wi-Fi. Encrypted, peer-to-peer, no interne
 
 ## The sync concept
 
-JotBunker sync is on-demand: the phone connects to the computer, both sides exchange their full state, conflicts are resolved via Last-Write-Wins, and then they're done. There is no real-time streaming of changes — each sync is a complete state exchange triggered by user action.
+JotBunker sync is on-demand and entirely user-driven. The phone connects to the computer, then nothing happens until the user explicitly clicks SYNC NOW on the computer. Each sync is a complete state exchange resolved by user choice: the user picks which side wins, and the losing side is replaced wholesale. There is no automatic merge, no real-time streaming of changes, no background reconciliation.  
 
-In the UI: DISCONNECTED → CONNECTING → CONNECTED. In the sync engine: `idle → connecting → key_exchange → handshake → syncing → docked → disconnected`. The engine phases are internal — the user sees connection status.
+Been out in the world and coming back for a data dump?  Sync upon return and choose phone wins.  Been working on your computer and about to hit the road?  Sync before you leave, choose computer wins.
 
 ## Connection flow
 
-1. Phone opens a WebSocket to the computer's IP and port (configured during [pairing](pairing.md))
-2. Phone sends a `key_init` message with a temporary X25519 public key
-3. Computer responds with `key_exchange` containing its public key
-4. Both derive a shared secret — all subsequent messages are NaCl secretbox-encrypted
-5. Phone sends `handshake` with device name, pairing secret, last sync timestamp, and an `autoSync` flag
-6. Computer validates the pairing secret and accepts the connection
-7. If `autoSync` is true, sync begins immediately after connection
+1. User taps Sync on the phone (the phone never auto-connects on launch or foreground)
+2. Phone opens a WebSocket to the computer's IP and port (configured during [pairing](pairing.md))
+3. Phone sends a `key_init` message with a temporary X25519 public key
+4. Computer responds with `key_exchange` containing its public key
+5. Both derive a shared secret; all subsequent messages are NaCl secretbox-encrypted
+6. Phone sends `handshake` with device name, pairing secret, and last sync timestamp
+7. Computer validates the pairing secret and accepts the connection. Both sides are now connected. **No state exchange happens** until the user requests one.
 
 ## State sync
 
-Sync is a multi-step exchange with an optional confirmation gate:
+State sync only runs when the user clicks SYNC NOW on the computer. Steps:
 
 1. Computer sends its full state (lists, locked lists, scratchpad, categories with timestamps)
-2. Phone saves the computer state locally, then sends its own **pre-merge** state back
-3. Computer computes a merge preview and generates a human-readable sync report (adds, deletes, modifications, reorders, check-toggles with actual item text)
-4. **If sync confirmation is enabled on the computer:** a [confirmation dialog](computer-settings-sync-history.md) appears with a 60-second timeout. Options depend on divergence size — see [Sync Confirmation & History](computer-settings-sync-history.md) for details.
-5. Computer sends `sync_confirm` (with `mode`: `merge`, `desktop-wins`, or `phone-wins`) or `sync_cancel`
-6. Phone merges based on the chosen mode — LWW merge, full phone replace, or full computer replace
-7. Both sides update `lastSyncTimestamp`
+2. Phone saves the computer state locally, then sends its own state back
+3. Computer compares both sides and generates a human-readable sync report (adds, deletes, modifications, reorders, check-toggles with actual item text)
+4. SYNC PREVIEW dialog appears on the computer with a 60-second auto-cancel timer. The user picks one of three buttons:
+   - **DESKTOP WINS**: phone replaces its lists / locked lists / scratchpad wholesale with the computer's state
+   - **PHONE WINS**: computer replaces its lists / locked lists / scratchpad wholesale with the phone's state
+   - **CANCEL**: no changes on either side; sync is aborted
+5. Computer sends `sync_confirm` (with `mode: desktop-wins | phone-wins`) or `sync_cancel` over the encrypted channel
+6. Both sides apply the chosen side's state and update `lastSyncTimestamp`
 
-If sync confirmation is disabled, the computer sends `sync_confirm` with mode `merge` automatically (no dialog).
+If the diff is empty (both sides identical), the dialog is skipped entirely and the sync completes silently with a timestamp update.
 
-The computer also has a **SYNC NOW** button that re-triggers a full state exchange at any time while connected.
+If the user lets the 60-second timer expire, the sync is cancelled. No data changes on either device. The `lastSyncTimestamp` is not updated, so the next SYNC NOW will show the same divergence again.
 
 ## Button states during transfers and saves
 
@@ -45,29 +47,22 @@ To prevent overlapping operations from stepping on each other, the computer temp
 
 Buttons re-enable automatically the moment the operation finishes. The sidebar system messages log shows what's happening in plain text.
 
-## Merge algorithm
+## Resolution model
 
-Conflicts are resolved per-slot using Last-Write-Wins (LWW) by `updatedAt` timestamp. Categories use the same approach across their fixed 6 slots. Deletion detection uses `remoteSince` (the other side's last sync timestamp) with a 500ms clock-skew grace period.
+For Lists, Locked Lists, and Scratchpad, the resolution is wholesale replacement of the losing side. There is no per-item, per-slot, or timestamp-based merge. The user is responsible for picking the side they want to keep, and that side replaces the other across all six category slots, all items, and all category labels.
 
-## Settings
-
-| Setting | Platform | Description |
-|---|---|---|
-| Auto-connect on open | Phone | Automatically connects to computer when the app is opened |
-| Auto-sync on connect | Phone | Automatically starts sync when connection is established |
-| Sync confirmation | Computer | Shows a confirmation dialog before applying sync (60s timeout) |
-| Auto-sync on change | Computer | Debounced auto-sync when lists/lockedLists/scratchpad data changes |
+Jots sync separately and are unaffected by this flow; jot media is phone → computer only and travels via `jot_manifest`, `jot_meta_request/response`, `jot_refresh_request/response`, and `jot_download_request/response` (see [Sync Protocol](sync-protocol.md)).
 
 ## What syncs
 
 | Data | Direction | Method |
 |---|---|---|
-| Lists (items + categories) | Bidirectional | Full state exchange |
-| Locked Lists | Bidirectional | Full state exchange |
-| Scratchpads (text + categories) | Bidirectional | Full state exchange |
+| Lists (items + categories) | Bidirectional | User-choice replacement (DESKTOP WINS / PHONE WINS) |
+| Locked Lists | Bidirectional | User-choice replacement (DESKTOP WINS / PHONE WINS) |
+| Scratchpads (text + categories) | Bidirectional | User-choice replacement (DESKTOP WINS / PHONE WINS) |
 | Jot media (images, files, audio, drawings) | Phone → Computer | Manifest + binary download |
 | Settings | Not synced | Local to each device |
 
 ---
 
-See also: [Pairing](pairing.md) | [Sync Protocol](sync-protocol.md) | [Security](security.md) | [Sync Confirmation & History](computer-settings-sync-history.md)
+See also: [Pairing](pairing.md) | [Sync Protocol](sync-protocol.md) | [Security](security.md) | [Sync Preview & History](computer-settings-sync-history.md)

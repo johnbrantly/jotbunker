@@ -25,15 +25,6 @@ Only visible when an adapter is selected.
 | IP:Port | Display (monospace) | Shows `{ip}:{port}` below the QR code |
 | SHOW SECRET / HIDE SECRET | Toggle button | Reveals or hides the full pairing secret UUID |
 
-### Auto Sync
-
-Separated by a divider within the Network Sync section.
-
-| Element | Type | Default | Description |
-|---|---|---|---|
-| AUTO SYNC | Toggle (OFF/ON) | OFF | When enabled, the computer automatically syncs after store changes (lists, locked lists, scratchpad) |
-| SYNC DELAY (SECONDS AFTER LAST EDIT) | Number input | 30 | Range: 5–300 seconds. Debounce timer — sync triggers this many seconds after the last edit. Only visible when Auto Sync is ON. Minimum enforced at 5 seconds |
-
 ---
 
 ## Accent Color
@@ -118,18 +109,15 @@ See [Debug Logging](debug-logging.md) for details on log format and file locatio
 
 ---
 
-## Sync Confirmation
+## Sync History
 
-| Element | Type | Default | Description |
-|---|---|---|---|
-| SYNC CONFIRMATION | Toggle (OFF/ON) | OFF | When enabled, a confirmation dialog appears before each sync is applied. The dialog shows a merge preview and offers Merge, Computer Wins, Phone Wins, or Cancel options with a 60-second timeout |
-| VIEW SYNC HISTORY | Button | — | Opens the sync log modal showing the last 10 sync reports |
+| Element | Type | Description |
+|---|---|---|
+| VIEW SYNC HISTORY | Button | Opens the sync log modal showing the last 10 sync reports |
 
-**Sync Confirmation Timeout behavior:** If the user does not respond within 60 seconds, the dialog auto-cancels. This sends a `sync_cancel` message to the phone over the encrypted channel. The phone discards the pending computer state it was holding. No data is changed on either device — both keep their pre-sync state. The `lastSyncTimestamp` is **not** updated, so the next sync will still see the full divergence. The devices remain connected (docked); only the sync exchange is aborted.
+The SYNC PREVIEW dialog runs on every sync (no toggle). It shows DESKTOP WINS, PHONE WINS, and CANCEL with a 60-second auto-cancel timer. If the timer expires the sync is cancelled, no data changes on either device, and `lastSyncTimestamp` is not updated. The connection remains live; only the sync exchange is aborted.
 
-**When sync confirmation is disabled:** All syncs proceed immediately with a standard LWW merge — no preview, no warning, no override options. This includes large divergences. If one device was offline for a long time and the data has drifted significantly, the merge will silently add, delete, and modify items based on timestamps without any prompt. Enable sync confirmation if you want the chance to review before applying, especially after extended periods of offline use on either device.
-
-See [Sync Confirmation & History](computer-settings-sync-history.md) for full documentation of the preview dialog, report format, big divergence detection, and sync history viewer.
+See [Sync Preview & History](computer-settings-sync-history.md) for the dialog details and the sync history viewer.
 
 ---
 

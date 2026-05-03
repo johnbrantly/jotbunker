@@ -33,9 +33,9 @@ The three-dot menu in the list header (only visible when items exist):
 
 ## Sync behavior
 
-Lists sync **bidirectionally** between phone and computer. Both devices maintain the same items and categories. Conflict resolution uses Last-Write-Wins (LWW) — whichever device edited an item more recently has its version kept. New items created on either side are merged in. Items deleted on one side are detected and removed on the other using the `remoteSince` timestamp mechanism (see [Sync Protocol](sync-protocol.md)).
+Lists sync **bidirectionally** between phone and computer. Both devices maintain the same items and categories. Sync is resolved by user choice on every sync: a SYNC PREVIEW dialog on the computer shows what each side has and asks the user to pick **DESKTOP WINS**, **PHONE WINS**, or **CANCEL** (60-second auto-cancel). The losing side is replaced wholesale, including items, category labels, and unchecked counts. There is no automatic merge.
 
-Category renames also sync with LWW. If both devices rename the same category, the more recent rename wins.
+Category renames travel with the chosen side; whichever device wins keeps both its items and its category labels.
 
 ## Offline behavior
 

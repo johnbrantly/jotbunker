@@ -22,7 +22,7 @@ On the computer, you can **right-click a category pill** to rename it inline (no
 
 ## Sync behavior
 
-Scratchpad text syncs bidirectionally via on-demand state exchange. Each category's text has a timestamp. Conflict resolution is LWW — the device with the more recent edit wins.
+Scratchpad text syncs bidirectionally via on-demand state exchange. Resolution is by user choice on every sync: the SYNC PREVIEW dialog on the computer asks the user to pick DESKTOP WINS, PHONE WINS, or CANCEL, and the losing side's scratchpad is replaced wholesale across all six categories.
 
 Category renames sync the same way as [Lists](lists.md) categories.
 
