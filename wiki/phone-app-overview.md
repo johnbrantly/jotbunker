@@ -28,7 +28,7 @@ Settings is a modal overlay with blur background. Six sections: Computer Sync, S
 
 ## Offline-first
 
-Everything works without a network connection. Data persists in AsyncStorage on the device. Sync is an on-demand state exchange — when you connect and sync, both devices merge their states.
+Everything works without a network connection. Data persists in AsyncStorage on the device. Sync is an on-demand state exchange — when you connect and sync, the computer runs an automatic three-way merge so both sides' edits survive without you having to pick a winner.
 
 ---
 

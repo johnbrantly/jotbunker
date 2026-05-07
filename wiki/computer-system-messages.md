@@ -57,6 +57,9 @@ Every message is also written to disk at `%APPDATA%\JotBunker\system-messages.lo
 ### Jot clear
 - `Cleared Jot {id} from phone` — after phone confirms jot deletion
 
+### Sync events are NOT here
+Sync instrumentation (`[merge] applied ...`, `[ancestor] INFO ...`, `[tombstone] ...`, `[gc] ...`) does NOT go to System Messages. It writes to `%APPDATA%\Jotbunker\debug-logs\desktop-sync.log` instead, always-on. See [Debug Logging](debug-logging.md) for the two-stream split.
+
 ### Backup and restore
 - `Secure backup saved: {path}` — encrypted backup success
 - `Backup saved: {path}` — plaintext backup success

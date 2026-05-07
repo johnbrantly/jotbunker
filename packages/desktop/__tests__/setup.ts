@@ -1,4 +1,5 @@
 import { vi } from 'vitest'
+import { installIpcStorageFake } from './renderer/stores/ipcStorageFake'
 
 // ── window.electronAPI mock ──
 // All IPC methods that the renderer uses via preload
@@ -61,6 +62,11 @@ const electronAPI = {
 // @ts-ignore - Set up global window.electronAPI
 globalThis.window = globalThis.window || ({} as any)
 ;(globalThis.window as any).electronAPI = electronAPI
+
+// Backing store + IPC store accessors for renderer-side persist tests.
+// Adds storeGetItem/storeSetItem/storeRemoveItem to the same electronAPI
+// object the line above just installed.
+installIpcStorageFake()
 
 export { electronAPI }
 

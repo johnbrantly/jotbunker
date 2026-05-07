@@ -2,8 +2,10 @@ import React, { useMemo, useState, useCallback } from 'react'
 import { cssFont } from '../styles/tokens'
 import { useTheme } from '../hooks/useTheme'
 import { useSyncHistoryStore } from '../stores/syncHistoryStore'
+import type { SyncHistoryEntry } from '../stores/syncHistoryStore'
 import ConfirmDialog from './ConfirmDialog'
-import type { SyncReport, SyncSideReport } from '@jotbunker/shared'
+import type { SyncReport, SyncSideReport, MergeReport } from '@jotbunker/shared'
+import { formatMergeSummary } from '@jotbunker/shared'
 
 const SECTION_LABELS: Record<string, string> = {
   lists: 'LISTS',
@@ -107,6 +109,46 @@ function ReportDetail({ report, colors }: { report: SyncReport; colors: any }) {
     <div>
       <SideDetail side={report.phoneOnly} label="PHONE HAS (desktop does not)" colors={colors} />
       <SideDetail side={report.desktopOnly} label="DESKTOP HAS (phone does not)" colors={colors} />
+    </div>
+  )
+}
+
+/**
+ * Phase 5.5: detail panel for post-cutover merge entries. Lists each non-zero
+ * count as a row. The legacy ReportDetail above renders pre-cutover entries
+ * unchanged.
+ */
+function MergeReportDetail({ report, colors }: { report: MergeReport; colors: any }) {
+  const c = report.counts
+  const rows: Array<{ label: string; value: number; color: string }> = [
+    { label: 'Added from phone', value: c.addedFromPhone, color: '#22c55e' },
+    { label: 'Added from desktop', value: c.addedFromDesktop, color: '#22c55e' },
+    { label: 'Field edits applied', value: c.editedField, color: '#f59e0b' },
+    { label: 'Conflicts resolved by latest-edit', value: c.editedLWW, color: '#f59e0b' },
+    { label: 'Items deleted', value: c.tombstoned, color: '#ef4444' },
+    { label: 'Ties surfaced', value: c.ties, color: '#8b5cf6' },
+  ].filter((r) => r.value > 0)
+
+  if (rows.length === 0) {
+    return (
+      <div style={{ ...cssFont('DMSans-Regular'), fontSize: 12, color: colors.textSecondary, textAlign: 'center', padding: '12px 0' }}>
+        No changes
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '4px 0' }}>
+      {rows.map((row) => (
+        <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', paddingLeft: 8, paddingRight: 8 }}>
+          <span style={{ ...cssFont('DMSans-Regular'), fontSize: 12, color: colors.textPrimary }}>
+            {row.label}
+          </span>
+          <span style={{ ...cssFont('DMMono-Regular'), fontSize: 12, color: row.color }}>
+            {row.value}
+          </span>
+        </div>
+      ))}
     </div>
   )
 }
@@ -271,10 +313,15 @@ export default function SyncLogDialog({ onClose }: Props) {
     },
   }), [colors, d])
 
-  // Build a one-line summary for the list
-  function briefSummary(report: SyncReport): string {
+  // Build a one-line summary for the list. Branches on entry shape: post-
+  // cutover entries use the new MergeReport-driven format; pre-cutover
+  // entries continue rendering via the legacy SyncReport aggregation.
+  function briefEntrySummary(entry: SyncHistoryEntry): string {
+    if (entry.kind === 'merge') {
+      return formatMergeSummary(entry.mergeReport)
+    }
+    const report = entry.report
     if (report.isEmpty) return 'No changes'
-    // Aggregate across both sides
     const sides = [report.phoneOnly, report.desktopOnly].filter(Boolean)
     let added = 0, deleted = 0, modified = 0, reordered = 0, checked = 0, scratchpad = 0, renamed = 0
     for (const s of sides) {
@@ -331,7 +378,7 @@ export default function SyncLogDialog({ onClose }: Props) {
                   onClick={() => setSelectedId(selectedId === entry.id ? null : entry.id)}
                 >
                   <span style={styles.entryTime}>{formatTime(entry.timestamp)}</span>
-                  <span style={styles.entrySummary}>{briefSummary(entry.report)}</span>
+                  <span style={styles.entrySummary}>{briefEntrySummary(entry)}</span>
                 </button>
               ))}
             </div>
@@ -340,7 +387,9 @@ export default function SyncLogDialog({ onClose }: Props) {
               <>
                 <span style={styles.sectionLabel}>Sync Details:</span>
                 <div className="list-scroll" style={styles.detail}>
-                  <ReportDetail report={selectedEntry.report} colors={colors} />
+                  {selectedEntry.kind === 'merge'
+                    ? <MergeReportDetail report={selectedEntry.mergeReport} colors={colors} />
+                    : <ReportDetail report={selectedEntry.report} colors={colors} />}
                 </div>
               </>
             )}

@@ -33,13 +33,13 @@ The three-dot menu in the list header (only visible when items exist):
 
 ## Sync behavior
 
-Lists sync **bidirectionally** between phone and computer. Both devices maintain the same items and categories. Sync is resolved by user choice on every sync: a SYNC PREVIEW dialog on the computer shows what each side has and asks the user to pick **DESKTOP WINS**, **PHONE WINS**, or **CANCEL** (60-second auto-cancel). The losing side is replaced wholesale, including items, category labels, and unchecked counts. There is no automatic merge.
+Lists sync **bidirectionally** between phone and computer. Both devices maintain the same items and categories. Sync runs an automatic three-way merge: the computer compares its state, the phone's state, and a saved snapshot of the last successful sync, and produces a merged result that includes both sides' adds, edits, deletions, and reorders. Category renames merge the same way. No dialog, no choice, no lost edits in the normal case.
 
-Category renames travel with the chosen side; whichever device wins keeps both its items and its category labels.
+The legacy pick-a-side dialog still exists but only fires on a genuine field-level tie (same field of the same item, edited on both sides at the same instant) — exceedingly rare in solo-user usage.
 
 ## Offline behavior
 
-Changes made while disconnected are kept locally. When you reconnect and sync, both devices exchange their current state and merge — sync is an on-demand state exchange, not a queue replay.
+Changes made while disconnected are kept locally. When you reconnect and sync, the merge sees what each side did since the last sync and combines them. Adds on both sides survive; reorders on both sides combine; deletes always win over concurrent edits.
 
 ---
 

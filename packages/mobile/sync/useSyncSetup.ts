@@ -5,6 +5,7 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import type {
   StateSync,
   MobileSyncPlatform,
+  AncestorSnapshot,
 } from '@jotbunker/shared';
 import {
   SyncEngine,
@@ -19,6 +20,7 @@ import { useScratchpadStore } from '../stores/scratchpadStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useSyncStatusStore } from '../stores/syncStatusStore';
 import { useJotsStore } from '../stores/jotsStore';
+import { useAncestorStore } from '../stores/ancestorStore';
 import {
   buildJotManifest,
   buildJotMetadata,
@@ -29,6 +31,26 @@ import {
 } from '../hooks/sync/jotHandlers';
 
 const SYNC_TS_KEY = 'jotbunker-last-sync-ts';
+
+/**
+ * Phase 3: builds the ancestor snapshot from the current phone store state at
+ * the moment of commit. Reads RAW items including tombstones; Phase 5's
+ * three-way merge needs to know which items existed at last sync, including
+ * those tombstoned at that point.
+ */
+function buildAncestorSnapshot(): AncestorSnapshot {
+  const lists = useListsStore.getState();
+  const lockedLists = useLockedListsStore.getState();
+  const scratchpad = useScratchpadStore.getState();
+  return {
+    lists: lists.items,
+    lockedLists: lockedLists.items,
+    listsCategories: lists.categories,
+    lockedListsCategories: lockedLists.categories,
+    scratchpad: scratchpad.contents,
+    scratchpadCategories: scratchpad.categories,
+  };
+}
 
 function buildMobilePlatform(
   transport: MobileTransport,
@@ -104,10 +126,44 @@ function buildMobilePlatform(
       const ss = pendingDesktopState;
       pendingDesktopState = null;
 
+      // Phase 5.5: prefer the merged snapshot if the (post-cutover) sender
+      // included one. Falls back to the old mode-driven wholesale-replace
+      // path for backward compat with pre-cutover senders.
+      const mergedSnapshot = (msg as { snapshot?: typeof ss }).snapshot;
+      if (mergedSnapshot) {
+        useListsStore.setState({
+          items: mergedSnapshot.lists,
+          categories: mergedSnapshot.listsCategories,
+        });
+        useLockedListsStore.setState({
+          items: mergedSnapshot.lockedLists,
+          categories: mergedSnapshot.lockedListsCategories,
+        });
+        useScratchpadStore.setState({
+          contents: mergedSnapshot.scratchpad,
+          categories: mergedSnapshot.scratchpadCategories,
+        });
+        lastSyncTimestamp = Date.now();
+        AsyncStorage.setItem(SYNC_TS_KEY, lastSyncTimestamp.toString());
+        const ancestorSnap = buildAncestorSnapshot();
+        useAncestorStore.getState().commit(ancestorSnap);
+        useListsStore.getState().gcTombstonesAgainst(ancestorSnap.lists);
+        useLockedListsStore.getState().gcTombstonesAgainst(ancestorSnap.lockedLists);
+        return;
+      }
+
+      // ── Backward-compat path (pre-cutover sender) ──
+
       if (msg.mode === 'phone-wins') {
         // Phone keeps its state; nothing to do.
         lastSyncTimestamp = Date.now();
         AsyncStorage.setItem(SYNC_TS_KEY, lastSyncTimestamp.toString());
+        // Phase 3: commit ancestor of the (unchanged) post-sync state.
+        const snapshot = buildAncestorSnapshot();
+        useAncestorStore.getState().commit(snapshot);
+        // Phase 5 tombstone GC.
+        useListsStore.getState().gcTombstonesAgainst(snapshot.lists);
+        useLockedListsStore.getState().gcTombstonesAgainst(snapshot.lockedLists);
         return;
       }
 
@@ -122,6 +178,12 @@ function buildMobilePlatform(
       }
       lastSyncTimestamp = Date.now();
       AsyncStorage.setItem(SYNC_TS_KEY, lastSyncTimestamp.toString());
+      // Phase 3: commit ancestor of the post-replace state.
+      const snapshot = buildAncestorSnapshot();
+      useAncestorStore.getState().commit(snapshot);
+      // Phase 5 tombstone GC.
+      useListsStore.getState().gcTombstonesAgainst(snapshot.lists);
+      useLockedListsStore.getState().gcTombstonesAgainst(snapshot.lockedLists);
     },
 
     buildHandshake(lastSyncTs) {

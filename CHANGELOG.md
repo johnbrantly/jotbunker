@@ -1,5 +1,9 @@
 # JotBunker Changelog
 
+## [v1.1.0] - 2026-05-07
+- Sync: no longer makes you pick a side. The "DESKTOP WINS / PHONE WINS / CANCEL" dialog from v1.0.7 is replaced with an automatic merge.  Both devices' changes survive every sync. Add three items on your phone, cross off two on your computer, both happen in one sync.
+- Settings: the "SYNC PREVIEW" section becomes "SYNC HISTORY" again — the dialog is now a rare per-tie / large-delta picker, not a mandatory pre-sync prompt. The history viewer keeps a rolling 10 most recent syncs with a counts summary.
+
 ## [v1.0.7] - 2026-05- 02
 - Android: updated adaptive-icon.png with more padding for proper logo image centering
 - Mobile: fix drag-and-hold gesture missing on Lists / Locked Lists by memoizing RowItem

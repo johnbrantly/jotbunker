@@ -1,4 +1,5 @@
 import type { ListItem, Category } from '../types';
+import type { AncestorSnapshot } from '../stores/createAncestorSlice';
 import { syncLog } from './syncLog';
 
 // ── Notes sync metadata types ──
@@ -200,6 +201,15 @@ export type SyncConfirmMode = 'desktop-wins' | 'phone-wins';
 export interface SyncConfirm {
   type: 'sync_confirm';
   mode: SyncConfirmMode;
+  /**
+   * Phase 5.5 cutover: optional merged snapshot the receiver applies wholesale.
+   * Pre-cutover senders omit it; post-cutover receivers prefer `snapshot` and
+   * fall back to `mode`-driven wholesale-replace if absent (backward-compat
+   * during the brief mixed-version window when one client updates first).
+   */
+  snapshot?: AncestorSnapshot;
+  /** Phase 5.5 observational: when the merge applied. For log correlation. */
+  appliedAt?: number;
 }
 
 export interface SyncCancel {
@@ -252,7 +262,11 @@ const MESSAGE_VALIDATORS: Record<SyncMessageType, (m: Record<string, unknown>) =
   jot_meta_response:     (m) => isObj(m.jot) && isNum((m.jot as Record<string, unknown>).id),
   jot_manifest:          (m) => isArr(m.jots),
   debug_log:             (m) => isArr(m.lines),
-  sync_confirm:          (m) => isStr(m.mode) && ['desktop-wins', 'phone-wins'].includes(m.mode as string),
+  sync_confirm:          (m) =>
+    isStr(m.mode)
+    && ['desktop-wins', 'phone-wins'].includes(m.mode as string)
+    && (m.snapshot === undefined || isObj(m.snapshot))
+    && (m.appliedAt === undefined || isNum(m.appliedAt)),
   sync_cancel:           ()  => true,
   state_sync:            (m) => isArr(m.lists) && isArr(m.lockedLists) && isArr(m.listsCategories) && isArr(m.lockedListsCategories) && isNum(m.since),
 };

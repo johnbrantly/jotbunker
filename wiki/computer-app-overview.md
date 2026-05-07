@@ -49,10 +49,10 @@ All app data lives in `%APPDATA%\JotBunker\`:
 
 | Path | Contents |
 |---|---|
-| `stores/` | JSON files for each store (lists, locked lists, settings, sync history, etc.) |
+| `stores/` | JSON files for each store (lists, locked lists, ancestor, settings, sync history, etc.) |
 | `window-state.json` | Window position and size |
-| `debug-logs/` | Sync protocol logs |
-| `system-messages.log` | Rolling 50-entry app log |
+| `debug-logs/` | `desktop-sync.log` (always-on sync instrumentation + toggle-gated transport events) and `phone-sync.log` (toggle-gated, from phone) |
+| `system-messages.log` | Rolling 50-entry app log for non-sync events (saves, downloads, backups, errors) |
 
 User-facing exports go to:
 - `Documents/JotBunker Downloads/` — downloaded jot content

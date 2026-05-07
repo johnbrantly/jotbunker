@@ -6,9 +6,11 @@ Phone connects to computer over local Wi-Fi. Encrypted, peer-to-peer, no interne
 
 ## The sync concept
 
-JotBunker sync is on-demand and entirely user-driven. The phone connects to the computer, then nothing happens until the user explicitly clicks SYNC NOW on the computer. Each sync is a complete state exchange resolved by user choice: the user picks which side wins, and the losing side is replaced wholesale. There is no automatic merge, no real-time streaming of changes, no background reconciliation.  
+JotBunker sync is on-demand and entirely user-driven. The phone connects to the computer, then nothing happens until the user explicitly clicks SYNC NOW on the computer. For Lists, Locked Lists, and Scratchpads, each sync is a complete state exchange resolved by an **automatic three-way merge** — both sides' edits survive without you having to pick a winner. The computer compares the local computer state, the phone's state, and a saved snapshot of the last successful sync, and produces a merged result that includes everyone's adds, edits, deletions, and reorders.
 
-Been out in the world and coming back for a data dump?  Sync upon return and choose phone wins.  Been working on your computer and about to hit the road?  Sync before you leave, choose computer wins.
+Been out in the world adding things to your phone? Been at your computer crossing things off? Sync — the merged result has both. No dialog, no choice, no lost edits.
+
+The legacy "PICK A SIDE" dialog still exists but only fires on a genuine conflict — the same field of the same item edited on both sides at the same instant. In normal use you will not see it.
 
 ## Connection flow
 
@@ -24,19 +26,33 @@ Been out in the world and coming back for a data dump?  Sync upon return and cho
 
 State sync only runs when the user clicks SYNC NOW on the computer. Steps:
 
-1. Computer sends its full state (lists, locked lists, scratchpad, categories with timestamps)
-2. Phone saves the computer state locally, then sends its own state back
-3. Computer compares both sides and generates a human-readable sync report (adds, deletes, modifications, reorders, check-toggles with actual item text)
-4. SYNC PREVIEW dialog appears on the computer with a 60-second auto-cancel timer. The user picks one of three buttons:
-   - **DESKTOP WINS**: phone replaces its lists / locked lists / scratchpad wholesale with the computer's state
-   - **PHONE WINS**: computer replaces its lists / locked lists / scratchpad wholesale with the phone's state
-   - **CANCEL**: no changes on either side; sync is aborted
-5. Computer sends `sync_confirm` (with `mode: desktop-wins | phone-wins`) or `sync_cancel` over the encrypted channel
-6. Both sides apply the chosen side's state and update `lastSyncTimestamp`
+1. Computer asks the phone for its full state (lists, locked lists, scratchpad, categories, with item-level timestamps and stable ids)
+2. Phone sends `state_sync` with its current state
+3. Computer reads its own state and the saved **ancestor snapshot** from the last successful sync
+4. Computer runs a three-way merge: for each item, it compares ancestor / phone / computer to decide what survived, what was added, what was edited, what was deleted
+5. The merged snapshot is applied to the computer's lists, locked lists, and scratchpad
+6. Computer sends `sync_confirm` to the phone with the merged snapshot attached; phone applies it directly
+7. Both sides save a fresh ancestor snapshot of the merged state, ready for the next sync
 
-If the diff is empty (both sides identical), the dialog is skipped entirely and the sync completes silently with a timestamp update.
+If the merge produces a true tie (same field of the same item, edited on both sides at the same `updatedAt` millisecond), a per-tie picker dialog appears so you can pick which value wins. This is rare. Otherwise the sync is silent and instantaneous.
 
-If the user lets the 60-second timer expire, the sync is cancelled. No data changes on either device. The `lastSyncTimestamp` is not updated, so the next SYNC NOW will show the same divergence again.
+If both sides are identical, the sync still runs but every counter reads zero — confirmation that nothing diverged.
+
+If the user cancels the rare tie picker (or lets its 60-second timer expire), the sync is aborted, no data changes on either device, and `lastSyncTimestamp` is not updated.
+
+## What the merge does in plain language
+
+| Situation | Result |
+|---|---|
+| Phone added a new item, computer didn't touch it | Item appears on the computer |
+| Computer added a new item, phone didn't touch it | Item appears on the phone |
+| Both sides added different new items | Both new items survive |
+| Phone edited item A's text, computer edited item A's checkbox | Both changes apply to the same item — phone's new text + computer's checked state |
+| Both sides edited the same field of the same item | Last edit wins (most recent `updatedAt`); if exactly tied, the picker dialog opens |
+| Phone deleted an item, computer didn't touch it | Item is gone on both sides |
+| Phone deleted an item, computer edited the same item | Delete wins |
+| Both sides reordered the same list | Combined order; new positions interpolated to keep both sides' moves |
+| Both sides added an item at the same position | Both items survive at that position; render order is deterministic across devices via id tiebreak |
 
 ## Button states during transfers and saves
 
@@ -47,22 +63,16 @@ To prevent overlapping operations from stepping on each other, the computer temp
 
 Buttons re-enable automatically the moment the operation finishes. The sidebar system messages log shows what's happening in plain text.
 
-## Resolution model
-
-For Lists, Locked Lists, and Scratchpad, the resolution is wholesale replacement of the losing side. There is no per-item, per-slot, or timestamp-based merge. The user is responsible for picking the side they want to keep, and that side replaces the other across all six category slots, all items, and all category labels.
-
-Jots sync separately and are unaffected by this flow; jot media is phone → computer only and travels via `jot_manifest`, `jot_meta_request/response`, `jot_refresh_request/response`, and `jot_download_request/response` (see [Sync Protocol](sync-protocol.md)).
-
 ## What syncs
 
 | Data | Direction | Method |
 |---|---|---|
-| Lists (items + categories) | Bidirectional | User-choice replacement (DESKTOP WINS / PHONE WINS) |
-| Locked Lists | Bidirectional | User-choice replacement (DESKTOP WINS / PHONE WINS) |
-| Scratchpads (text + categories) | Bidirectional | User-choice replacement (DESKTOP WINS / PHONE WINS) |
+| Lists (items + categories) | Bidirectional | Three-way merge |
+| Locked Lists | Bidirectional | Three-way merge |
+| Scratchpads (text + categories) | Bidirectional | Three-way merge (last-edit-wins on text bodies) |
 | Jot media (images, files, audio, drawings) | Phone → Computer | Manifest + binary download |
 | Settings | Not synced | Local to each device |
 
 ---
 
-See also: [Pairing](pairing.md) | [Sync Protocol](sync-protocol.md) | [Security](security.md) | [Sync Preview & History](computer-settings-sync-history.md)
+See also: [Pairing](pairing.md) | [Sync Protocol](sync-protocol.md) | [Security](security.md) | [Sync History](computer-settings-sync-history.md)

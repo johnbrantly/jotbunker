@@ -39,7 +39,9 @@ This is separate from the app's main data directory (`%APPDATA%\JotBunker\`). Th
 
 ## Restore
 
-Restore replaces the current computer state with the backup's data. This is destructive — current data is overwritten. A confirmation dialog warns before proceeding.
+Restore replaces the current computer state (Lists, Locked Lists, Scratchpad, Tags) with the backup's data. This is destructive — current data is overwritten. A confirmation dialog warns before proceeding.
+
+**On the next sync after a restore:** the three-way merge runs with the ancestor cleared, so the desktop's restored state wins on every shared item. Items the phone has that are not in the restored backup will still merge in as adds (the merge unions both sides; restore is a local replace, not a remote replace). If you want the phone to exactly match the restored state, delete the unwanted items from the phone after the next sync, then sync again. Sync history is also cleared on restore so the log starts fresh from the new baseline.
 
 ## Computer-only
 

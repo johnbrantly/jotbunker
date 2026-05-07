@@ -2,156 +2,99 @@ import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { cssFont } from '../styles/tokens'
 import { useTheme } from '../hooks/useTheme'
 import { useSyncConfirmStore } from '../stores/syncConfirmStore'
-import type { SyncReport, SyncSideReport } from '@jotbunker/shared'
+import type { AncestorSnapshot, MergeTie } from '@jotbunker/shared'
+
+// Phase 5.5 cutover: replaces the old "PHONE HAS / DESKTOP HAS" SyncReportDialog
+// with a per-tie picker. Fires only when mergeThreeWay produced ties (case 9
+// same-field same-`updatedAt`). Vanishingly rare in practice.
+//
+// Dialog UX: one row per tie. Each row shows section + slot + item context,
+// phone vs desktop values, and two buttons. Apply requires every row to be
+// picked. Cancel aborts the whole sync.
 
 const SECTION_LABELS: Record<string, string> = {
   lists: 'LISTS',
   lockedLists: 'LOCKED LISTS',
   scratchpad: 'SCRATCHPAD',
+  listsCategories: 'LISTS / category',
+  lockedListsCategories: 'LOCKED LISTS / category',
+  scratchpadCategories: 'SCRATCHPAD / category',
 }
 
-function truncate(text: string, max = 50): string {
-  return text.length > max ? text.slice(0, max) + '...' : text
+function formatValue(v: unknown): string {
+  if (v === null || v === undefined) return '(empty)'
+  if (typeof v === 'string') return v.length > 60 ? v.slice(0, 60) + '...' : v
+  return String(v)
 }
 
-function SideReport({ side, label }: { side: SyncSideReport; label: string }) {
-  const { colors } = useTheme()
-  const sections = ['lists', 'lockedLists', 'scratchpad'] as const
+function tieKey(t: MergeTie): string {
+  return `${t.section}:${t.slot}:${t.itemId ?? ''}:${t.field}`
+}
 
-  const addColor = '#22c55e'
-  const delColor = '#ef4444'
-  const modColor = '#f59e0b'
-
-  const sideHeadStyle: React.CSSProperties = {
-    ...cssFont('DMSans-Black'),
-    fontSize: 11,
-    letterSpacing: 1,
-    color: colors.primary,
-    marginTop: 8,
-    marginBottom: 2,
+/**
+ * Build the final snapshot by applying per-tie picks to the merged snapshot.
+ * The merged snapshot already has phone's value as the deterministic
+ * placeholder (per `mergeItemFields`), so 'phone' picks are pass-through and
+ * 'desktop' picks overwrite at the tie's location.
+ */
+function applyPicks(
+  merged: AncestorSnapshot,
+  ties: MergeTie[],
+  picks: Record<string, 'phone' | 'desktop'>,
+): AncestorSnapshot {
+  const result: AncestorSnapshot = JSON.parse(JSON.stringify(merged))
+  for (const tie of ties) {
+    const key = tieKey(tie)
+    const pick = picks[key]
+    if (!pick || pick === 'phone') continue // phone is already in merged
+    const value = tie.desktopValue
+    if (tie.section === 'lists' || tie.section === 'lockedLists') {
+      const slot = result[tie.section][tie.slot]
+      const idx = slot.findIndex((it) => it.id === tie.itemId)
+      if (idx >= 0) {
+        ;(slot[idx] as Record<string, unknown>)[tie.field] = value
+      }
+    } else if (tie.section === 'scratchpad') {
+      result.scratchpad[tie.slot] = {
+        ...result.scratchpad[tie.slot],
+        [tie.field]: value,
+      } as { content: string; updatedAt: number }
+    } else if (
+      tie.section === 'listsCategories'
+      || tie.section === 'lockedListsCategories'
+      || tie.section === 'scratchpadCategories'
+    ) {
+      const cats = result[tie.section]
+      cats[tie.slot] = { ...cats[tie.slot], [tie.field]: value }
+    }
   }
-  const sectionHeadStyle: React.CSSProperties = {
-    ...cssFont('DMSans-Bold'),
-    fontSize: 11,
-    letterSpacing: 0.5,
-    color: colors.textPrimary,
-    paddingLeft: 8,
-    marginTop: 6,
-    marginBottom: 2,
-  }
-  const catHeadStyle: React.CSSProperties = {
-    ...cssFont('DMSans-Bold'),
-    fontSize: 11,
-    color: colors.textSecondary,
-    paddingLeft: 16,
-    marginTop: 3,
-  }
-  const lineStyle: React.CSSProperties = {
-    ...cssFont('DMMono-Regular'),
-    fontSize: 11,
-    lineHeight: '17px',
-    paddingLeft: 24,
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-  }
-  const renameStyle: React.CSSProperties = {
-    ...cssFont('DMSans-Regular'),
-    fontSize: 11,
-    color: modColor,
-    paddingLeft: 16,
-    lineHeight: '17px',
-  }
-
-  if (side.isEmpty) return null
-
-  return (
-    <div>
-      <div style={sideHeadStyle}>{label}</div>
-      {/* Summary */}
-      <div style={{ ...cssFont('DMSans-Regular'), fontSize: 10, color: colors.textSecondary, paddingLeft: 8, marginBottom: 2 }}>
-        {side.totalAdded > 0 && <span style={{ color: addColor }}>+{side.totalAdded} </span>}
-        {side.totalDeleted > 0 && <span style={{ color: delColor }}>-{side.totalDeleted} </span>}
-        {side.totalModified > 0 && <span style={{ color: modColor }}>{side.totalModified} modified </span>}
-        {side.totalChecked > 0 && <span>{side.totalChecked} toggled </span>}
-        {side.totalReordered > 0 && <span>{side.totalReordered} reordered </span>}
-      </div>
-
-      {sections.map((section) => {
-        const catChanges = side.categoryChanges.filter((c) => c.section === section)
-        const slots = side.slotChanges.filter((c) => c.section === section)
-        const spChanges = section === 'scratchpad' ? side.scratchpadChanges : []
-        if (catChanges.length === 0 && slots.length === 0 && spChanges.length === 0) return null
-
-        return (
-          <div key={section}>
-            <div style={sectionHeadStyle}>{SECTION_LABELS[section]}</div>
-
-            {catChanges.map((c, i) => (
-              <div key={`cat-${i}`} style={renameStyle}>{c.oldLabel} → {c.newLabel}</div>
-            ))}
-
-            {slots.map((ch, si) => (
-              <div key={`slot-${si}`}>
-                <div style={catHeadStyle}>{ch.categoryLabel}</div>
-                {ch.added.map((item, i) => (
-                  <div key={`a-${i}`} style={{ ...lineStyle, color: addColor }}>
-                    + {truncate(item.text)}{item.done ? ' (done)' : ''}
-                  </div>
-                ))}
-                {ch.deleted.map((item, i) => (
-                  <div key={`d-${i}`} style={{ ...lineStyle, color: delColor }}>
-                    - {truncate(item.text)}
-                  </div>
-                ))}
-                {ch.modified.map((item, i) => (
-                  <div key={`m-${i}`} style={{ ...lineStyle, color: modColor }}>
-                    ~ {truncate(item.oldText)} → {truncate(item.newText)}
-                  </div>
-                ))}
-                {ch.checked.map((item, i) => (
-                  <div key={`c-${i}`} style={{ ...lineStyle, color: colors.textSecondary }}>
-                    {item.nowDone ? '☑' : '☐'} {truncate(item.text)}
-                  </div>
-                ))}
-                {ch.reordered.map((item, i) => (
-                  <div key={`r-${i}`} style={{ ...lineStyle, color: '#8b5cf6' }}>
-                    ↕ {truncate(item.text)}
-                  </div>
-                ))}
-              </div>
-            ))}
-
-            {spChanges.map((c, i) => (
-              <div key={`sp-${i}`} style={catHeadStyle}>{c.categoryLabel}: content changed</div>
-            ))}
-          </div>
-        )
-      })}
-    </div>
-  )
+  return result
 }
 
 const TIMEOUT_SECONDS = 60
 
 export default function SyncReportDialog() {
   const pending = useSyncConfirmStore((s) => s.pending)
-  const respond = useSyncConfirmStore((s) => s.respond)
+  const respondApply = useSyncConfirmStore((s) => s.respondApply)
+  const respondCancel = useSyncConfirmStore((s) => s.respondCancel)
   const { colors, confirmDialog: d } = useTheme()
   const [secondsLeft, setSecondsLeft] = useState(TIMEOUT_SECONDS)
+  const [picks, setPicks] = useState<Record<string, 'phone' | 'desktop'>>({})
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     if (!pending) {
       if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+      setPicks({})
       return
     }
     setSecondsLeft(TIMEOUT_SECONDS)
+    setPicks({})
     timerRef.current = setInterval(() => {
       setSecondsLeft((prev) => {
         if (prev <= 1) {
           if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
-          respond('cancel')
+          respondCancel()
           return 0
         }
         return prev - 1
@@ -183,11 +126,11 @@ export default function SyncReportDialog() {
       paddingBottom: d.boxPaddingV,
       paddingLeft: d.boxPaddingH,
       paddingRight: d.boxPaddingH,
-      width: 440,
+      width: 520,
       maxHeight: '80vh',
       display: 'flex',
       flexDirection: 'column' as const,
-      alignItems: 'center',
+      alignItems: 'stretch',
       gap: d.boxGap,
     },
     title: {
@@ -195,11 +138,55 @@ export default function SyncReportDialog() {
       fontSize: d.titleFontSize,
       color: colors.textPrimary,
       letterSpacing: d.titleFontSize * d.titleLetterSpacing,
+      textAlign: 'center' as const,
+    },
+    subtitle: {
+      ...cssFont('DMSans-Regular'),
+      fontSize: 12,
+      color: colors.textSecondary,
+      textAlign: 'center' as const,
+      marginBottom: 8,
     },
     body: {
-      width: '100%',
       maxHeight: 400,
       overflowY: 'auto' as const,
+      display: 'flex',
+      flexDirection: 'column' as const,
+      gap: 12,
+    },
+    tieRow: {
+      borderWidth: 1,
+      borderStyle: 'solid' as const,
+      borderColor: colors.dialogBorder,
+      borderRadius: 6,
+      padding: 10,
+      display: 'flex',
+      flexDirection: 'column' as const,
+      gap: 6,
+    },
+    tieHead: {
+      ...cssFont('DMSans-Bold'),
+      fontSize: 11,
+      letterSpacing: 0.5,
+      color: colors.textSecondary,
+    },
+    tieField: {
+      ...cssFont('DMMono-Regular'),
+      fontSize: 11,
+      color: colors.textPrimary,
+    },
+    sideBtn: {
+      flex: 1,
+      paddingTop: 6,
+      paddingBottom: 6,
+      paddingLeft: 8,
+      paddingRight: 8,
+      borderRadius: 4,
+      borderWidth: 1,
+      borderStyle: 'solid' as const,
+      cursor: 'pointer' as const,
+      ...cssFont('DMMono-Regular'),
+      fontSize: 11,
       textAlign: 'left' as const,
     },
     btnRow: {
@@ -207,11 +194,22 @@ export default function SyncReportDialog() {
       flexDirection: 'row' as const,
       gap: d.btnGap,
       width: '100%',
-      flexWrap: 'wrap' as const,
     },
+    applyBtn: {
+      flex: 1,
+      paddingTop: d.btnPaddingV,
+      paddingBottom: d.btnPaddingV,
+      borderRadius: d.btnRadius,
+      backgroundColor: colors.primary,
+      borderWidth: 0,
+      cursor: 'pointer' as const,
+      ...cssFont('DMSans-Bold'),
+      fontSize: d.btnFontSize,
+      color: colors.dialogBg,
+    },
+    applyBtnDisabled: { opacity: 0.4, cursor: 'not-allowed' as const },
     cancelBtn: {
       flex: 1,
-      minWidth: 80,
       paddingTop: d.btnPaddingV,
       paddingBottom: d.btnPaddingV,
       borderRadius: d.btnRadius,
@@ -219,67 +217,89 @@ export default function SyncReportDialog() {
       borderWidth: 1,
       borderStyle: 'solid' as const,
       borderColor: d.cancelBorder,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
       cursor: 'pointer' as const,
-    },
-    cancelText: {
       ...cssFont('DMSans-Bold'),
       fontSize: d.btnFontSize,
-      letterSpacing: d.btnFontSize * d.btnLetterSpacing,
-      color: colors.primary,
+      color: colors.textPrimary,
     },
-    winsBtn: {
-      flex: 1,
-      minWidth: 80,
-      paddingTop: d.btnPaddingV,
-      paddingBottom: d.btnPaddingV,
-      borderRadius: d.btnRadius,
-      backgroundColor: d.cancelBg,
-      borderWidth: 1,
-      borderStyle: 'solid' as const,
-      borderColor: '#f59e0b40',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      cursor: 'pointer' as const,
-    },
-    winsText: {
-      ...cssFont('DMSans-Bold'),
-      fontSize: d.btnFontSize,
-      letterSpacing: d.btnFontSize * d.btnLetterSpacing,
-      color: '#f59e0b',
+    timer: {
+      ...cssFont('DMMono-Regular'),
+      fontSize: 11,
+      color: colors.textSecondary,
+      textAlign: 'center' as const,
     },
   }), [colors, d])
 
   if (!pending) return null
 
-  const { report } = pending
+  const ties = pending.ties
+  const allPicked = ties.every((t) => picks[tieKey(t)] !== undefined)
+
+  const onApply = () => {
+    if (!allPicked) return
+    const finalSnapshot = applyPicks(pending.mergedSnapshot, ties, picks)
+    respondApply(finalSnapshot)
+  }
 
   return (
     <div style={styles.overlay}>
       <div style={styles.box}>
-        <span style={styles.title}>SYNC PREVIEW</span>
-        <span style={{ ...cssFont('DMSans-Regular'), fontSize: 10, color: colors.textSecondary }}>
-          Auto-cancel in {secondsLeft}s
-        </span>
-        <span style={{ ...cssFont('DMSans-Bold'), fontSize: 11, color: colors.textSecondary, letterSpacing: 0.3, textAlign: 'center' as const, marginTop: -2 }}>
-          Lists, Locked Lists, and Scratchpad will be replaced wholesale on the losing side. Jots are unaffected.
-        </span>
-        <div style={styles.body}>
-          <SideReport side={report.phoneOnly} label="PHONE HAS (desktop does not)" />
-          <SideReport side={report.desktopOnly} label="DESKTOP HAS (phone does not)" />
+        <div style={styles.title}>SYNC CONFLICT</div>
+        <div style={styles.subtitle}>
+          {ties.length} tie{ties.length === 1 ? '' : 's'} - same field edited at the same instant on both sides. Pick one per row.
         </div>
+        <div style={styles.body}>
+          {ties.map((tie) => {
+            const key = tieKey(tie)
+            const picked = picks[key]
+            const phoneSelected = picked === 'phone'
+            const desktopSelected = picked === 'desktop'
+            return (
+              <div key={key} style={styles.tieRow}>
+                <div style={styles.tieHead}>
+                  {SECTION_LABELS[tie.section] ?? tie.section} / slot {tie.slot}
+                  {tie.itemContext ? ` / "${formatValue(tie.itemContext)}"` : ''}
+                  {' '}- {tie.field}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    style={{
+                      ...styles.sideBtn,
+                      borderColor: phoneSelected ? colors.primary : colors.dialogBorder,
+                      backgroundColor: phoneSelected ? colors.primary : 'transparent',
+                      color: phoneSelected ? colors.dialogBg : colors.textPrimary,
+                    }}
+                    onClick={() => setPicks((p) => ({ ...p, [key]: 'phone' }))}
+                  >
+                    PHONE: {formatValue(tie.phoneValue)}
+                  </button>
+                  <button
+                    style={{
+                      ...styles.sideBtn,
+                      borderColor: desktopSelected ? colors.primary : colors.dialogBorder,
+                      backgroundColor: desktopSelected ? colors.primary : 'transparent',
+                      color: desktopSelected ? colors.dialogBg : colors.textPrimary,
+                    }}
+                    onClick={() => setPicks((p) => ({ ...p, [key]: 'desktop' }))}
+                  >
+                    DESKTOP: {formatValue(tie.desktopValue)}
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        <div style={styles.timer}>auto-cancel in {secondsLeft}s</div>
         <div style={styles.btnRow}>
-          <button style={styles.cancelBtn} onClick={() => respond('cancel')}>
-            <span style={styles.cancelText}>CANCEL</span>
+          <button style={styles.cancelBtn} onClick={respondCancel}>
+            CANCEL SYNC
           </button>
-          <button style={styles.winsBtn} onClick={() => respond('desktop-wins')}>
-            <span style={styles.winsText}>DESKTOP WINS</span>
-          </button>
-          <button style={styles.winsBtn} onClick={() => respond('phone-wins')}>
-            <span style={styles.winsText}>PHONE WINS</span>
+          <button
+            style={{ ...styles.applyBtn, ...(allPicked ? {} : styles.applyBtnDisabled) }}
+            onClick={onApply}
+            disabled={!allPicked}
+          >
+            APPLY PICKS
           </button>
         </div>
       </div>

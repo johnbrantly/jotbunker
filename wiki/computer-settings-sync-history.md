@@ -1,59 +1,31 @@
-# Sync Preview & History
+# Sync History
 
-Every sync on the computer goes through a mandatory SYNC PREVIEW dialog. The user picks which side wins; the losing side is replaced wholesale. Recent syncs are recorded in a history viewer for after-the-fact review.
+Every sync on the computer runs an automatic three-way merge of Lists, Locked Lists, and Scratchpads. Recent syncs are recorded in a history viewer for after-the-fact review. The legacy SYNC PREVIEW dialog only fires on a genuine field-level tie (same field of the same item, edited on both sides at the same instant).
 
 ---
 
-## SYNC PREVIEW dialog
+## Sync flow on the computer
 
-When the user clicks SYNC NOW on the computer and the diff is non-empty, the dialog blocks until the user picks an option or the 60-second timer auto-cancels.
+When the user clicks SYNC NOW:
 
-### Title and timer
+1. The computer reads its local state, the phone's `state_sync` payload, and the saved ancestor snapshot
+2. It runs a three-way merge
+3. The merged result is applied locally and sent to the phone
+4. A merge entry is added to Sync History summarizing what changed
+5. A new ancestor snapshot is committed on both sides
+
+You will not normally see any dialog. Sync feels instantaneous.
+
+## Per-tie resolution dialog (rare)
+
+The dialog only opens when the merge produces one or more **ties** — same field of the same item, edited on both sides with exactly equal `updatedAt` millisecond timestamps. In single-user usage with phone + laptop this is essentially never; in laboratory testing with deliberately synchronized clocks it can happen.
+
+When it opens:
 
 - **Title:** "SYNC PREVIEW"
 - **Countdown:** "Auto-cancel in {seconds}s" (60-second timeout)
-- **Subtitle:** A short reminder that Lists, Locked Lists, and Scratchpad will be replaced wholesale on the losing side, and that Jots are unaffected
-
-### Report body
-
-Two sections, each only rendered if non-empty:
-
-| Section | What it shows |
-|---|---|
-| **PHONE HAS** (computer does not) | Items, categories, and scratchpad content the phone has that the computer does not |
-| **COMPUTER HAS** (phone does not) | Items, categories, and scratchpad content the computer has that the phone does not |
-
-Within each section, changes are grouped by data type (LISTS, LOCKED LISTS, SCRATCHPAD) and then by category. Each change is shown with a symbol and the item text (truncated to 50 characters):
-
-| Symbol | Color | Meaning |
-|---|---|---|
-| `+` | Green | Item added |
-| `-` | Red | Item deleted |
-| `~` | Orange | Item text modified (shows old → new) |
-| `☑` / `☐` | Gray | Item checked or unchecked |
-| `↕` | Purple | Item reordered |
-
-Category renames are shown as: `Old Name → New Name` (orange).
-
-Scratchpad changes are shown as: `[Category Name] content changed`.
-
-### Buttons
-
-| Button | Action |
-|---|---|
-| CANCEL | Aborts the sync. No changes applied to either device. `lastSyncTimestamp` is not updated |
-| DESKTOP WINS | Computer keeps its state; phone replaces its lists / locked lists / scratchpad wholesale with the computer's state |
-| PHONE WINS | Phone keeps its state; computer replaces its lists / locked lists / scratchpad wholesale with the phone's state |
-
-### Empty syncs
-
-If both sides are identical (no diff), the dialog is skipped entirely. The sync completes silently and `lastSyncTimestamp` is updated.
-
-### Timeout
-
-After 60 seconds with no input, `respond('cancel')` fires automatically. This sends a `sync_cancel` to the phone, both sides keep their pre-sync state, and `lastSyncTimestamp` is not updated. The devices remain connected; only the sync exchange is aborted.
-
----
+- **Body:** One row per tie. Each row shows the section (LISTS / LOCKED LISTS / SCRATCHPAD), the slot, the item context, and the phone value vs the computer value as side-by-side selectable buttons.
+- **APPLY** is enabled only after every row has been picked. Cancel aborts the entire sync; no data changes on either side and no ancestor commit happens.
 
 ## Sync History
 
@@ -61,23 +33,25 @@ Accessed via the **VIEW SYNC HISTORY** button in the Sync History section of [Co
 
 ### History list
 
-- Stores the last **10** sync reports (newest first)
+- Stores the last **10** sync entries (newest first)
 - Each entry shows:
   - **Timestamp** formatted as `Apr 12 14:35`
-  - **Summary** with aggregated counts like `+3, -2, 5 mod, 2 toggled` or `No changes`
-- Click an entry to view its full report detail
+  - **Summary** with merge counts like `+3 phone, +1 computer, 2 edited, 1 tombstoned` or `No changes`
+- Click an entry to view its full detail
+- Older legacy entries (created before the merge upgrade) render in their original "PHONE HAS / COMPUTER HAS" diff format until the rolling-10 window rotates them out
 
-### Detail view
+### Detail view (post-merge entries)
 
-When an entry is selected, the full report is displayed below the list with two sections: PHONE HAS (computer does not) and COMPUTER HAS (phone does not).
+Shows the merge counts:
 
-### Legend
-
-A color legend is shown at the top of the dialog:
-
-```
-+ added   - deleted   ~ modified   ↕ reordered   ☑ toggled
-```
+| Field | Meaning |
+|---|---|
+| Added from phone | Items the phone introduced that the computer didn't have |
+| Added from computer | Items the computer introduced that the phone didn't have |
+| Edited (different fields) | Same item, different fields touched on each side; both edits kept |
+| Edited (LWW) | Same item, same field touched on both sides; latest write won |
+| Tombstoned | Items deleted on one side and reaped on both |
+| Ties | Same field, exactly equal `updatedAt` — picked manually in the dialog |
 
 ### Clear history
 
@@ -86,26 +60,16 @@ A color legend is shown at the top of the dialog:
 
 ---
 
-## How the report is generated
+## Where the merge log lives
 
-When SYNC NOW runs:
+For lower-level evidence of what each sync did, the computer's `%APPDATA%\Jotbunker\debug-logs\desktop-sync.log` records two lines per sync (always-on, not gated by DEBUG LOGGING):
 
-1. Computer takes a snapshot of its current state (lists, locked lists, scratchpad)
-2. Phone sends its current state over the encrypted channel
-3. Computer computes a diff between the two pre-sync states
-4. Two perspectives are generated:
-   - **phoneOnly**: items the phone has that the computer doesn't
-   - **desktopOnly**: items the computer has that the phone doesn't
-5. The report is saved to sync history, regardless of whether the user picks a side or cancels
+```
+[merge] applied lists:N/locked:M/scratchpad:K addedPhone:X addedDesktop:Y editedField:Z editedLWW:W tombstoned:T ties:R
+[ancestor] INFO committedAt=... hash=... counts=lists:N/locked:M/scratchpad:K
+```
 
-### Item diff logic
-
-For each category slot, items are compared by ID:
-- **Added**: present in target but not in source
-- **Deleted**: present in source but not in target
-- **Modified**: same ID, different text
-- **Checked**: same ID, different done state
-- **Reordered**: same IDs but in a different order (only reported when more than 1 item moved)
+Counts and hashes only — no item text — so it's safe even though Locked Lists carry secrets. See [Debug Logging](debug-logging.md) for the full log-stream split.
 
 ---
 

@@ -5,6 +5,8 @@ import { useListsStore } from '../../stores/listsStore'
 import { useLockedListsStore } from '../../stores/lockedListsStore'
 import { useTagStore } from '../../stores/tagStore'
 import { useConsoleStore } from '../../stores/consoleStore'
+import { useAncestorStore } from '../../stores/ancestorStore'
+import { useSyncHistoryStore } from '../../stores/syncHistoryStore'
 import ConfirmDialog from '../ConfirmDialog'
 import PasswordDialog from '../PasswordDialog'
 
@@ -144,6 +146,15 @@ export default function BackupSection({ styles, colors, onRestoreComplete }: Bac
       // match what was previously synced, so deletion detection must be
       // disabled on the next sync.
       localStorage.removeItem('lastSyncTimestamp')
+      // Wipe the three-way-merge ancestor. Without this the next sync would
+      // merge restored desktop state against a stale ancestor and propagate
+      // phantom tombstones to the phone. Null ancestor drops the merge into
+      // the well-defined parallel-add branch where desktop's restored values
+      // win on shared items and phone-only items merge in as adds.
+      useAncestorStore.setState({ record: null })
+      // Clear sync history so the log doesn't show pre-restore entries
+      // alongside fresh post-restore merges.
+      useSyncHistoryStore.getState().clear()
       onRestoreComplete(data)
       log('Backup restored successfully')
       setAlertMsg({ title: 'Restore Complete', message: 'Backup restored successfully.', variant: 'success' })

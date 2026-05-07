@@ -29,12 +29,12 @@ describe('initial state', () => {
 })
 
 describe('addItem', () => {
-  it('adds an item at position 0', () => {
+  it('adds an item with a numeric position', () => {
     useListsStore.getState().addItem('Buy milk')
     const items = useListsStore.getState().items[0]
     expect(items).toHaveLength(1)
     expect(items[0].text).toBe('Buy milk')
-    expect(items[0].position).toBe(0)
+    expect(typeof items[0].position).toBe('number')
     expect(items[0].done).toBe(false)
   })
 
@@ -98,19 +98,24 @@ describe('toggleItem', () => {
 })
 
 describe('deleteItem', () => {
-  it('removes the item', () => {
+  it('tombstones the item; live view excludes it', () => {
     useListsStore.getState().addItem('Delete me')
     useListsStore.getState().addItem('Keep me')
     const items = useListsStore.getState().items[0]
     const deleteId = items.find((i) => i.text === 'Delete me')!.id
 
     useListsStore.getState().deleteItem(deleteId)
-    const remaining = useListsStore.getState().items[0]
-    expect(remaining).toHaveLength(1)
-    expect(remaining[0].text).toBe('Keep me')
+    // Raw retains the tombstone.
+    const raw = useListsStore.getState().items[0]
+    expect(raw).toHaveLength(2)
+    expect(raw.find((i) => i.id === deleteId)?.deleted).toBe(true)
+    // Live view shows only the remaining item.
+    const live = useListsStore.getState().getLiveItems(0)
+    expect(live).toHaveLength(1)
+    expect(live[0].text).toBe('Keep me')
   })
 
-  it('recomputes positions after deletion', () => {
+  it('recomputes live positions after tombstoning', () => {
     useListsStore.getState().addItem('A')
     useListsStore.getState().addItem('B')
     useListsStore.getState().addItem('C')
@@ -118,8 +123,10 @@ describe('deleteItem', () => {
     const middleId = items[1].id
 
     useListsStore.getState().deleteItem(middleId)
-    const remaining = useListsStore.getState().items[0]
-    expect(remaining.map((i) => i.position)).toEqual([0, 1])
+    const live = useListsStore.getState().getLiveItems(0)
+    // Live items are sorted strictly ascending by position.
+    expect(live).toHaveLength(2)
+    expect(live[0].position).toBeLessThan(live[1].position)
   })
 })
 
@@ -155,7 +162,11 @@ describe('reorderItems', () => {
     expect(reordered[0].text).toBe('A')
     expect(reordered[1].text).toBe('B')
     expect(reordered[2].text).toBe('C')
-    expect(reordered.map((i) => i.position)).toEqual([0, 1, 2])
+    // Live items in strictly-ascending position order.
+    const positions = reordered.map((i) => i.position)
+    for (let i = 1; i < positions.length; i++) {
+      expect(positions[i]).toBeGreaterThan(positions[i - 1])
+    }
   })
 })
 
@@ -191,7 +202,7 @@ describe('moveItemToCategory', () => {
     expect(useListsStore.getState().items[0]).toHaveLength(0)
     expect(useListsStore.getState().items[3]).toHaveLength(1)
     expect(useListsStore.getState().items[3][0].text).toBe('Moveable')
-    expect(useListsStore.getState().items[3][0].position).toBe(0)
+    expect(typeof useListsStore.getState().items[3][0].position).toBe('number')
   })
 
   it('is a no-op for nonexistent item', () => {

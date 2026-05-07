@@ -7,17 +7,20 @@ import type {
   JotManifest,
   JotMetaResponse,
   DesktopSyncPlatform,
-  MergeStores,
+  AncestorSnapshot,
 } from '@jotbunker/shared'
 import {
   JOT_COUNT,
-  computeSyncReport,
-  formatSyncReport,
   syncLog,
+  mergeThreeWay,
+  formatMergeSummary,
+  isMergeReportEmpty,
+  formatAppliedLogLine,
 } from '@jotbunker/shared'
 import { useListsStore } from '../stores/listsStore'
 import { useLockedListsStore } from '../stores/lockedListsStore'
 import { useJotsStore } from '../stores/jotsStore'
+import { useAncestorStore } from '../stores/ancestorStore'
 import { useScratchpadStore } from '../stores/scratchpadStore'
 import { useConsoleStore } from '../stores/consoleStore'
 import { useSyncConfirmStore } from '../stores/syncConfirmStore'
@@ -30,6 +33,26 @@ import { summarizeItems } from './syncUtils'
 import { rasterizeDrawing } from '../utils/rasterizeDrawing'
 
 export type SyncStatus = 'disconnected' | 'connected'
+
+/**
+ * Phase 3: builds the ancestor snapshot from the current desktop store state
+ * at the moment of commit. Reads RAW items including tombstones; Phase 5's
+ * three-way merge needs to know which items existed at last sync, including
+ * those tombstoned at that point.
+ */
+function buildAncestorSnapshot(): AncestorSnapshot {
+  const lists = useListsStore.getState()
+  const lockedLists = useLockedListsStore.getState()
+  const scratchpad = useScratchpadStore.getState()
+  return {
+    lists: lists.items,
+    lockedLists: lockedLists.items,
+    listsCategories: lists.categories,
+    lockedListsCategories: lockedLists.categories,
+    scratchpad: scratchpad.contents,
+    scratchpadCategories: scratchpad.categories,
+  }
+}
 
 export interface DesktopPlatformDeps {
   binaryQueue: BinaryQueue
@@ -87,77 +110,83 @@ export function buildDesktopPlatform(deps: DesktopPlatformDeps): DesktopPlatform
 
     async handleStateSync(ss, send) {
       await lockedListsReady
-      syncLog('STATE', `phone sent (pre-merge): lists=${summarizeItems(ss.lists)} lockedLists=${summarizeItems(ss.lockedLists)}`)
+      syncLog('STATE', `phone sent: lists=${summarizeItems(ss.lists)} lockedLists=${summarizeItems(ss.lockedLists)}`)
 
-      // 1. Snapshot desktop local state
-      const localSnapshot: MergeStores = {
-        lists: {
-          items: useListsStore.getState().items,
-          categories: useListsStore.getState().categories,
-        },
-        lockedLists: {
-          items: useLockedListsStore.getState().items,
-          categories: useLockedListsStore.getState().categories,
-        },
-        scratchpad: {
-          contents: useScratchpadStore.getState().contents,
-          categories: useScratchpadStore.getState().categories,
-        },
+      // Build the three merge inputs: local desktop state, phone's wire
+      // payload, and the local ancestor. Read directly from stores - the
+      // pre-cutover MergeStores plumbing is gone (Commit 8 dead-code drop).
+      const listsState = useListsStore.getState()
+      const lockedListsState = useLockedListsStore.getState()
+      const scratchpadState = useScratchpadStore.getState()
+
+      const localAsSnapshot: AncestorSnapshot = {
+        lists: listsState.items,
+        lockedLists: lockedListsState.items,
+        listsCategories: listsState.categories,
+        lockedListsCategories: lockedListsState.categories,
+        scratchpad: scratchpadState.contents,
+        scratchpadCategories: scratchpadState.categories,
+      }
+      const phoneAsSnapshot: AncestorSnapshot = {
+        lists: ss.lists,
+        lockedLists: ss.lockedLists,
+        listsCategories: ss.listsCategories,
+        lockedListsCategories: ss.lockedListsCategories,
+        scratchpad: ss.scratchpad ?? scratchpadState.contents,
+        scratchpadCategories: ss.scratchpadCategories ?? scratchpadState.categories,
+      }
+      const localAncestor = useAncestorStore.getState().record?.snapshot ?? null
+      const mergedResult = mergeThreeWay(localAncestor, phoneAsSnapshot, localAsSnapshot)
+
+      // Tie-only dialog. The merge auto-resolves all non-tie cases (case 4/5
+      // adds, case 7/8 one-sided edits, case 9 different-fields, same-field
+      // LWW). Only genuine same-field same-`updatedAt` ties surface.
+      let finalSnapshot = mergedResult.snapshot
+      if (mergedResult.ties.length > 0) {
+        const resolution = await useSyncConfirmStore
+          .getState()
+          .requestTieResolution(mergedResult.ties, mergedResult.snapshot)
+        if (resolution.kind === 'cancelled') {
+          syncLog('STATE', 'User cancelled tie resolution; aborting sync')
+          send({ type: 'sync_cancel' })
+          return
+        }
+        finalSnapshot = resolution.snapshot
       }
 
-      // 2. Phone's pre-merge state (used if user picks phone-wins)
-      const phonePreState: MergeStores = {
-        lists: { items: ss.lists, categories: ss.listsCategories },
-        lockedLists: { items: ss.lockedLists, categories: ss.lockedListsCategories },
-        scratchpad: {
-          contents: ss.scratchpad || localSnapshot.scratchpad.contents,
-          categories: ss.scratchpadCategories || localSnapshot.scratchpad.categories,
-        },
-      }
+      // Apply the merged snapshot to all three desktop stores.
+      useListsStore.setState({ items: finalSnapshot.lists, categories: finalSnapshot.listsCategories })
+      useLockedListsStore.setState({ items: finalSnapshot.lockedLists, categories: finalSnapshot.lockedListsCategories })
+      useScratchpadStore.setState({ contents: finalSnapshot.scratchpad, categories: finalSnapshot.scratchpadCategories })
 
-      // 3. Generate sync report. The dialog shows phoneOnly + desktopOnly so
-      //    the user can decide which side to keep.
-      const report = computeSyncReport(localSnapshot, ss)
+      send({
+        type: 'sync_confirm',
+        mode: 'phone-wins',
+        snapshot: finalSnapshot,
+        appliedAt: Date.now(),
+      })
 
-      // 4. Save report to sync history (skip empty reports)
-      if (!report.isEmpty) {
-        const summary = formatSyncReport(report)
-        useSyncHistoryStore.getState().addEntry(summary, report)
-      }
-
-      // 5. Empty report = nothing to sync. Update timestamp and exit; no prompt.
-      if (report.isEmpty) {
-        syncLog('STATE', 'No changes; sync complete (no prompt)')
-        this.setLastSyncTimestamp(Date.now())
-        return
-      }
-
-      // 6. Always prompt user. They pick a side, or cancel (or timeout = cancel).
-      type SyncChoice = 'cancel' | 'desktop-wins' | 'phone-wins'
-      const choice = (await useSyncConfirmStore.getState().requestConfirmation(report)) as SyncChoice
-
-      // 7. Apply chosen side. No merge mode.
-      if (choice === 'cancel') {
-        syncLog('STATE', 'User cancelled sync (or timeout)')
-        send({ type: 'sync_cancel' })
-        return
-      }
-
-      if (choice === 'desktop-wins') {
-        syncLog('STATE', 'User chose desktop wins')
-        // Desktop keeps its state; phone takes desktop's data via phone-side handler.
-        send({ type: 'sync_confirm', mode: 'desktop-wins' })
-      } else {
-        // phone-wins: desktop replaces its state with phone's pre-merge state.
-        syncLog('STATE', 'User chose phone wins')
-        useListsStore.setState({ items: phonePreState.lists.items, categories: phonePreState.lists.categories })
-        useLockedListsStore.setState({ items: phonePreState.lockedLists.items, categories: phonePreState.lockedLists.categories })
-        useScratchpadStore.setState({ contents: phonePreState.scratchpad.contents, categories: phonePreState.scratchpad.categories })
-        send({ type: 'sync_confirm', mode: 'phone-wins' })
-      }
-
-      syncLog('STATE', `State sync complete (${choice})`)
       this.setLastSyncTimestamp(Date.now())
+
+      // Phase 3 ancestor commit. Phase 5 tombstone GC after.
+      const ancestorSnapshot = buildAncestorSnapshot()
+      useAncestorStore.getState().commit(ancestorSnapshot)
+      useListsStore.getState().gcTombstonesAgainst(ancestorSnapshot.lists)
+      useLockedListsStore.getState().gcTombstonesAgainst(ancestorSnapshot.lockedLists)
+
+      // Sync History entry. Skip empty merges (all counts zero) so the
+      // history doesn't fill up with "no changes" entries.
+      if (!isMergeReportEmpty(mergedResult.summary)) {
+        useSyncHistoryStore.getState().addMergeEntry(
+          formatMergeSummary(mergedResult.summary),
+          mergedResult.summary,
+        )
+      }
+
+      // Applied-result log line. Routes to desktop-sync.log (always-on, not
+      // gated by DEBUG LOGGING). system-messages.log is reserved for non-sync
+      // app events. Privacy: counts only, no item text.
+      window.electronAPI.sendDebugLog(formatAppliedLogLine(finalSnapshot, mergedResult.summary))
     },
 
     async handleJotRefreshResponse(data) {

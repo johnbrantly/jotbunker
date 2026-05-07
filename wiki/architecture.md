@@ -21,11 +21,13 @@ jotbunker/                        # npm workspaces root
 
 Pure TypeScript — no platform dependencies. Both mobile and desktop import from `@jotbunker/shared`. Contains:
 
-- **Types** — `ListItem`, `Category`, `MergeStores`, plus the wire-protocol message types
+- **Types** — `ListItem` (with optional tombstone fields), `Category`, the `AncestorSnapshot` shape, plus the wire-protocol message types
 - **Constants** — version, jot count (6), default categories, input modes
 - **Theme** — `buildTheme(hue, grayscale)` generates the full color palette
-- **Sync engine** — `SyncEngine`, `SyncPhaseManager`, `SyncTransport`, protocol types, diff/report computation (`syncReport.ts`), sync logging
-- **Store utilities** — `createItemSlice` factory for lists/lockedLists
+- **Sync engine** — `SyncEngine`, `SyncPhaseManager`, `SyncTransport`, protocol types
+- **Three-way merge** — `mergeThreeWay(ancestor, phone, computer)` produces an authoritative merged snapshot plus a tie list and a count summary; `formatAppliedLogLine` writes the per-sync `[merge] applied ...` line
+- **Ancestor slice** — `createAncestorSlice` produces the post-sync snapshot store used as the third party in the merge
+- **Store utilities** — `createItemSlice` factory for lists/lockedLists; tombstone-aware (`deleted` / `deletedAt`), LWW-aware (`updatedAt`), fractional-position-ordered with `(position, id)` lexicographic tiebreak for cross-device determinism
 
 ## Mobile package (`packages/mobile/`)
 
@@ -63,10 +65,10 @@ Electron 35 with electron-vite. Windows only.
 ## Key design decisions
 
 - **Zustand everywhere** — same store pattern on both platforms, shared `createItemSlice` factory
-- **Sync via the engine** — `SyncEngine` orchestrates the wire protocol; `desktopPlatform.handleStateSync` and `mobilePlatform.handleSyncConfirm` apply state directly to stores after a user picks DESKTOP WINS or PHONE WINS
+- **Sync via the engine** — `SyncEngine` orchestrates the wire protocol; `desktopPlatform.handleStateSync` runs the three-way merge against the persisted ancestor snapshot, applies the merged result locally, and ships the same snapshot to the phone via `sync_confirm.snapshot`. `mobilePlatform.handleSyncConfirm` applies the snapshot directly. Both sides commit a fresh ancestor and run tombstone GC after every successful sync.
 - **No `.ios.tsx`/`.android.tsx` files** — minimal `Platform.OS` checks, cross-platform by default
 - **Computer is the server** — phone initiates connections; computer listens on a configurable port
-- **Offline-first, user-resolved sync** — both devices work independently; when you sync, the computer prompts you to pick which side wins (Lists / Locked Lists / Scratchpad replaced wholesale on the losing side; Jots are phone → computer only)
+- **Offline-first, automatic-merge sync** — both devices work independently; when you sync, an authoritative three-way merge produces a result that includes both sides' edits. The legacy "pick a side" dialog now fires only on genuine same-`updatedAt` field-level ties. Jots are phone → computer only and are not part of the merge.
 
 ---
 

@@ -52,8 +52,8 @@ Full reference for all phone app settings — sync, screen lock, accent color, f
 ### [Computer Settings](computer-settings.md)
 Full reference for all computer app settings: network sync, accent color, font size, categories, save folder, backup, debug logging, sync history.
 
-### [Sync Preview & History](computer-settings-sync-history.md)
-The mandatory SYNC PREVIEW dialog (DESKTOP WINS / PHONE WINS / CANCEL with a 60-second auto-cancel) and the sync history viewer.
+### [Sync History](computer-settings-sync-history.md)
+Every sync runs an automatic three-way merge — both sides' edits survive without you picking a winner. Recent merges land in a history viewer. The legacy pick-a-side dialog only fires on a true tie (same field of the same item edited at the same instant on both sides).
 
 ###  [Palette Theming](theming.md)
 HSL-based accent color with a grayscale desaturation slider.  Default: desaturated steel blue (hue 205, grayscale 75).

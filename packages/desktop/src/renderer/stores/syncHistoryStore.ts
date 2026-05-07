@@ -1,21 +1,44 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { SyncReport } from '@jotbunker/shared'
+import type { SyncReport, MergeReport } from '@jotbunker/shared'
 import { ipcStorage } from './ipcStorage'
 
 const MAX_ENTRIES = 10
 
-export interface SyncHistoryEntry {
+// Phase 5.5 cutover: discriminated-union entry shape. Pre-cutover entries
+// carry a `report: SyncReport` (legacy "PHONE HAS / DESKTOP HAS" format).
+// Post-cutover entries carry `kind: 'merge'` plus `mergeReport: MergeReport`
+// (new auto-merge counts). Detail panel branches on `kind`; mixed history
+// renders without crashing.
+
+export interface LegacySyncHistoryEntry {
   id: number
   timestamp: number
   summary: string
   report: SyncReport
+  /** Absent on pre-cutover entries; renderer treats absence as legacy. */
+  kind?: undefined
 }
+
+export interface MergeSyncHistoryEntry {
+  id: number
+  timestamp: number
+  summary: string
+  mergeReport: MergeReport
+  kind: 'merge'
+}
+
+export type SyncHistoryEntry = LegacySyncHistoryEntry | MergeSyncHistoryEntry
 
 interface SyncHistoryState {
   entries: SyncHistoryEntry[]
   nextId: number
-  addEntry: (summary: string, report: SyncReport) => void
+  /**
+   * Phase 5.5 add: post-cutover sync events. Replaces the legacy
+   * `addEntry(summary, report)`. Pre-cutover entries persisted under the
+   * legacy shape continue to render via the detail panel's legacy branch.
+   */
+  addMergeEntry: (summary: string, mergeReport: MergeReport) => void
   clear: () => void
 }
 
@@ -24,13 +47,14 @@ export const useSyncHistoryStore = create<SyncHistoryState>()(
     (set) => ({
       entries: [],
       nextId: 1,
-      addEntry: (summary, report) =>
+      addMergeEntry: (summary, mergeReport) =>
         set((state) => {
-          const entry: SyncHistoryEntry = {
+          const entry: MergeSyncHistoryEntry = {
             id: state.nextId,
             timestamp: Date.now(),
             summary,
-            report,
+            mergeReport,
+            kind: 'merge',
           }
           const entries = [entry, ...state.entries]
           if (entries.length > MAX_ENTRIES) entries.length = MAX_ENTRIES

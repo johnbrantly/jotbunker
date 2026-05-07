@@ -113,11 +113,11 @@ See [Debug Logging](debug-logging.md) for details on log format and file locatio
 
 | Element | Type | Description |
 |---|---|---|
-| VIEW SYNC HISTORY | Button | Opens the sync log modal showing the last 10 sync reports |
+| VIEW SYNC HISTORY | Button | Opens the sync log modal showing the last 10 sync entries |
 
-The SYNC PREVIEW dialog runs on every sync (no toggle). It shows DESKTOP WINS, PHONE WINS, and CANCEL with a 60-second auto-cancel timer. If the timer expires the sync is cancelled, no data changes on either device, and `lastSyncTimestamp` is not updated. The connection remains live; only the sync exchange is aborted.
+Sync runs an automatic three-way merge on every SYNC NOW — both sides' edits survive without you picking a winner. The legacy "pick a side" dialog now only fires on a genuine field-level tie (same field, same item, identical `updatedAt` ms on both sides). When it does open, the per-tie picker has a 60-second auto-cancel. If cancelled or timed out, no data changes on either device and `lastSyncTimestamp` is not updated; the connection stays live.
 
-See [Sync Preview & History](computer-settings-sync-history.md) for the dialog details and the sync history viewer.
+See [Sync History](computer-settings-sync-history.md) for the history viewer and the rare tie-picker dialog details.
 
 ---
 

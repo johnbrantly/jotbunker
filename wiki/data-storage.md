@@ -13,9 +13,10 @@ All Zustand stores persist to AsyncStorage as JSON:
 | Key | Contents |
 |---|---|
 | `jotbunker-jots` | 6 jots: text, drawing (SVG JSON), image URIs, file URIs, recording URIs |
-| `jotbunker-lists` | Items, categories, active category |
-| `jotbunker-lockedLists` | Items, categories, active category (isUnlocked is transient — not persisted) |
+| `jotbunker-lists` | Items (raw, including tombstones), categories, active category |
+| `jotbunker-lockedLists` | Items (raw, including tombstones), categories, active category (isUnlocked is transient — not persisted) |
 | `jotbunker-scratchpad` | Text by category, categories, active category |
+| `jotbunker-ancestor` | Last-successful-sync snapshot used as the third party in three-way merge |
 | `jotbunker-settings` | Theme, sync config, pairing secret, security settings, font sizes, debug toggle |
 
 AsyncStorage is plaintext in the app's private sandbox.
@@ -48,6 +49,7 @@ stores/
 ├── jotbunker-lists.json
 ├── jotbunker-lockedLists.json
 ├── jotbunker-scratchpad.json
+├── jotbunker-ancestor.json       ← last-successful-sync snapshot for three-way merge
 ├── jotbunker-settings.json       ← contains pairing secret in plaintext
 ├── jotbunker-tags.json
 ├── jotbunker-console.json
@@ -62,9 +64,9 @@ Plaintext JSON files, read/written by the main process via IPC.
 |---|---|
 | `window-state.json` | Window position and size |
 | `autoupdate-disabled.flag` | Opt-out flag for auto-update |
-| `system-messages.log` | Rolling 50-entry app log |
-| `debug-logs/desktop-sync.log` | Computer sync protocol log |
-| `debug-logs/phone-sync.log` | Phone sync protocol log (received over wire) |
+| `system-messages.log` | Rolling 50-entry app log for non-sync events (saves, downloads, backups, errors) |
+| `debug-logs/desktop-sync.log` | Always-on sink for sync instrumentation (`[merge]`, `[ancestor]`, `[tombstone]`, `[gc]`); also captures toggle-gated transport-level protocol events when DEBUG LOGGING is on |
+| `debug-logs/phone-sync.log` | Toggle-gated phone transport-level protocol log (received over wire) |
 
 ### User-facing exports
 

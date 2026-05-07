@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { StyleSheet, Keyboard, Platform, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useShallow } from 'zustand/react/shallow';
 import { useLockedListsStore } from '../../stores/lockedListsStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useTheme } from '../../hooks/useTheme';
@@ -12,7 +13,6 @@ export default function LockedListsScreen() {
   const lockedListsLockEnabled = useSettingsStore((s) => s.lockedListsLockEnabled);
   const isUnlocked = useLockedListsStore((s) => s.isUnlocked);
   const unlock = useLockedListsStore((s) => s.unlock);
-  const items = useLockedListsStore((s) => s.items);
   const categories = useLockedListsStore((s) => s.categories);
   const activeSlot = useLockedListsStore((s) => s.activeSlot);
   const setActiveSlot = useLockedListsStore((s) => s.setActiveSlot);
@@ -28,7 +28,9 @@ export default function LockedListsScreen() {
     [],
   );
 
-  const currentItems = items[activeSlot] || [];
+  // Tombstones filtered at the slice (Phase 2 SSOT). useShallow keeps
+  // re-renders bounded to actual live-item changes.
+  const currentItems = useLockedListsStore(useShallow((s) => s.getLiveItems(s.activeSlot)));
 
   const styles = useMemo(() => StyleSheet.create({
     container: {

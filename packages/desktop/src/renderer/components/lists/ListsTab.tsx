@@ -1,11 +1,11 @@
 import React, { useMemo } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useListsStore } from '../../stores/listsStore'
 import { useTheme } from '../../hooks/useTheme'
 import ListView from './ListView'
 
 export default function ListsTab() {
   const { colors } = useTheme()
-  const items = useListsStore((s) => s.items)
   const categories = useListsStore((s) => s.categories)
   const activeSlot = useListsStore((s) => s.activeSlot)
   const setActiveSlot = useListsStore((s) => s.setActiveSlot)
@@ -17,7 +17,9 @@ export default function ListsTab() {
   const moveItemToCategory = useListsStore((s) => s.moveItemToCategory)
   const getUncheckedCount = useListsStore((s) => s.getUncheckedCount)
 
-  const currentItems = items[activeSlot] || []
+  // Tombstones filtered at the slice (Phase 2 SSOT). useShallow keeps
+  // re-renders bounded to actual live-item changes.
+  const currentItems = useListsStore(useShallow((s) => s.getLiveItems(s.activeSlot)))
 
   const styles = useMemo(() => ({
     container: {

@@ -1,0 +1,300 @@
+import { describe, it, expect, beforeEach } from 'vitest'
+import { useListsStore } from '../../../src/renderer/stores/listsStore'
+import { useLockedListsStore } from '../../../src/renderer/stores/lockedListsStore'
+import {
+  CATEGORY_COUNT,
+  DEFAULT_LISTS_CATEGORIES,
+  DEFAULT_LOCKED_LISTS_CATEGORIES,
+} from '@jotbunker/shared'
+import { ipcStorageStore, resetIpcStorageFake } from './ipcStorageFake'
+
+const emptySlots = () => Array.from({ length: CATEGORY_COUNT }, () => [])
+
+// zustand persist writes to ipcStorage asynchronously after each setState.
+// One macrotask is enough to let the in-memory fake settle.
+const flush = () => new Promise<void>((r) => setTimeout(r, 0))
+
+describe('listsStore persistence round-trip (desktop)', () => {
+  beforeEach(async () => {
+    resetIpcStorageFake()
+    useListsStore.setState({
+      items: emptySlots(),
+      categories: DEFAULT_LISTS_CATEGORIES,
+      activeSlot: 0,
+    })
+    await flush()
+  })
+
+  it('persists item ids to ipcStorage after addItem', async () => {
+    useListsStore.getState().addItem('first')
+    useListsStore.getState().addItem('second')
+    await flush()
+
+    const inMemoryIds = useListsStore.getState().items[0].map((i) => i.id)
+    expect(inMemoryIds).toHaveLength(2)
+    inMemoryIds.forEach((id) => expect(id.length).toBeGreaterThan(0))
+
+    const raw = ipcStorageStore['jotbunker-lists']
+    expect(raw).toBeDefined()
+    const persisted = JSON.parse(raw!)
+    const persistedIds = persisted.state.items[0].map((i: { id: string }) => i.id)
+    expect(persistedIds).toEqual(inMemoryIds)
+  })
+
+  it('rehydrates item ids from a stored fixture', async () => {
+    const fixtureItems = [
+      { id: 'fixed-id-a', text: 'a', done: false, position: 0, createdAt: 1, updatedAt: 1 },
+      { id: 'fixed-id-b', text: 'b', done: false, position: 1, createdAt: 2, updatedAt: 2 },
+    ]
+    const fixture = {
+      state: {
+        items: [fixtureItems, [], [], [], [], []],
+        categories: DEFAULT_LISTS_CATEGORIES,
+        activeSlot: 0,
+      },
+      version: 0,
+    }
+    ipcStorageStore['jotbunker-lists'] = JSON.stringify(fixture)
+
+    await useListsStore.persist.rehydrate()
+
+    const ids = useListsStore.getState().items[0].map((i) => i.id)
+    expect(ids).toEqual(['fixed-id-a', 'fixed-id-b'])
+  })
+
+  it('preserves ids through a mutation cycle persisted to ipcStorage', async () => {
+    useListsStore.getState().addItem('a')
+    useListsStore.getState().addItem('b')
+    useListsStore.getState().addItem('c')
+    await flush()
+
+    // addItem prepends; in-memory order is c, b, a.
+    const idsBefore = useListsStore.getState().items[0].map((i) => i.id)
+
+    useListsStore.getState().toggleItem(idsBefore[0])
+    useListsStore.getState().updateItemText(idsBefore[1], 'b-new')
+    useListsStore.getState().reorderItems(0, [...useListsStore.getState().items[0]].reverse())
+    await flush()
+
+    const raw = ipcStorageStore['jotbunker-lists']
+    const persisted = JSON.parse(raw!)
+    const persistedIds = persisted.state.items[0].map((i: { id: string }) => i.id)
+    expect(persistedIds).toEqual([...idsBefore].reverse())
+  })
+
+  it('tombstones persist and rehydrate intact', async () => {
+    useListsStore.getState().addItem('a')
+    useListsStore.getState().addItem('b')
+    useListsStore.getState().addItem('c')
+    await flush()
+    const middleId = useListsStore.getState().items[0][1].id
+
+    useListsStore.getState().deleteItem(middleId)
+    const tombstoneInMemory = useListsStore.getState().items[0].find((i) => i.id === middleId)!
+    await flush()
+
+    // ipcStorage carries the tombstone with deleted: true and a deletedAt.
+    const raw = ipcStorageStore['jotbunker-lists']
+    const persisted = JSON.parse(raw!)
+    const persistedSlot = persisted.state.items[0]
+    expect(persistedSlot).toHaveLength(3)
+    const persistedTombstone = persistedSlot.find((i: any) => i.id === middleId)
+    expect(persistedTombstone).toBeDefined()
+    expect(persistedTombstone.deleted).toBe(true)
+    expect(persistedTombstone.deletedAt).toBe(tombstoneInMemory.deletedAt)
+
+    // Rehydrate into a cleared store. setState's persist write would clobber
+    // ipcStorage with empty state, so re-pin the captured raw after the
+    // setState write settles, then rehydrate from it.
+    useListsStore.setState({
+      items: emptySlots(),
+      categories: DEFAULT_LISTS_CATEGORIES,
+      activeSlot: 0,
+    })
+    await flush()
+    ipcStorageStore['jotbunker-lists'] = raw!
+    await useListsStore.persist.rehydrate()
+
+    const rehydratedSlot = useListsStore.getState().items[0]
+    expect(rehydratedSlot).toHaveLength(3)
+    const rehydratedTombstone = rehydratedSlot.find((i) => i.id === middleId)!
+    expect(rehydratedTombstone.deleted).toBe(true)
+    expect(rehydratedTombstone.deletedAt).toBe(tombstoneInMemory.deletedAt)
+    expect(useListsStore.getState().getLiveItems(0)).toHaveLength(2)
+  })
+
+  it('legacy items missing the deleted field rehydrate as live', async () => {
+    const fixture = {
+      state: {
+        items: [
+          [
+            { id: 'legacy-1', text: 'a', done: false, position: 0, createdAt: 1, updatedAt: 1 },
+            { id: 'legacy-2', text: 'b', done: false, position: 1, createdAt: 2, updatedAt: 2 },
+          ],
+          [], [], [], [], [],
+        ],
+        categories: DEFAULT_LISTS_CATEGORIES,
+        activeSlot: 0,
+      },
+      version: 0,
+    }
+    ipcStorageStore['jotbunker-lists'] = JSON.stringify(fixture)
+    await useListsStore.persist.rehydrate()
+
+    const live = useListsStore.getState().getLiveItems(0)
+    expect(live.map((i) => i.id)).toEqual(['legacy-1', 'legacy-2'])
+  })
+
+  it('Phase 4: fractional positions persist and rehydrate intact', async () => {
+    const fixture = {
+      state: {
+        items: [
+          [
+            { id: 'a', text: 'a', done: false, position: -0.5, createdAt: 1, updatedAt: 1 },
+            { id: 'b', text: 'b', done: false, position: 1.25, createdAt: 1, updatedAt: 1 },
+            { id: 'c', text: 'c', done: false, position: 0.75, createdAt: 1, updatedAt: 1 },
+          ],
+          [], [], [], [], [],
+        ],
+        categories: DEFAULT_LISTS_CATEGORIES,
+        activeSlot: 0,
+      },
+      version: 0,
+    }
+    ipcStorageStore['jotbunker-lists'] = JSON.stringify(fixture)
+    await useListsStore.persist.rehydrate()
+
+    // Raw positions preserved bitwise across the JSON round-trip.
+    const raw = useListsStore.getState().items[0]
+    expect(raw.find((i) => i.id === 'a')!.position).toBe(-0.5)
+    expect(raw.find((i) => i.id === 'b')!.position).toBe(1.25)
+    expect(raw.find((i) => i.id === 'c')!.position).toBe(0.75)
+    // getLiveItems sorts by position ascending: a (-0.5), c (0.75), b (1.25).
+    expect(useListsStore.getState().getLiveItems(0).map((i) => i.id)).toEqual(['a', 'c', 'b'])
+  })
+
+  it('Phase 4: arrayMove drag flow takes the minimal-change path (only moved item repositions)', async () => {
+    // Mirrors desktop ListView.tsx:116-133: drag-end fires arrayMove(items,
+    // oldIndex, newIndex) and passes the result to reorderItems. Asserts the
+    // slice's LCS-based detection identifies the dragged item as the single
+    // mover and assigns it a midpoint between new neighbors; other items'
+    // positions are byte-equal to their pre-drag values.
+    useListsStore.getState().addItem('a')
+    useListsStore.getState().addItem('b')
+    useListsStore.getState().addItem('c')
+    useListsStore.getState().addItem('d')
+    await flush()
+
+    // Live order (sorted by position) post-prepends: [d, c, b, a].
+    const live = useListsStore.getState().getLiveItems(0)
+    const originalPositions = new Map(live.map((it) => [it.id, it.position]))
+
+    // Drag d (idx 0) to between b and a (idx 3): mimic arrayMove.
+    const oldIndex = live.findIndex((it) => it.text === 'd')
+    const newIndex = live.findIndex((it) => it.text === 'a')
+    const reordered = [...live]
+    const [moved] = reordered.splice(oldIndex, 1)
+    reordered.splice(newIndex, 0, moved)
+    expect(reordered.map((it) => it.text)).toEqual(['c', 'b', 'a', 'd'])
+
+    useListsStore.getState().reorderItems(0, reordered)
+
+    const post = useListsStore.getState().getLiveItems(0)
+    expect(post.map((it) => it.text)).toEqual(['c', 'b', 'a', 'd'])
+
+    // Minimal-change: only d's position changed; c, b, a kept their original
+    // positions byte-for-byte.
+    for (const it of post) {
+      if (it.text === 'd') {
+        expect(it.position).not.toBe(originalPositions.get(it.id))
+      } else {
+        expect(it.position).toBe(originalPositions.get(it.id))
+      }
+    }
+  })
+
+  it('Phase 4: drag-reorder cycle preserves order through persist and rehydrate', async () => {
+    useListsStore.getState().addItem('A')
+    useListsStore.getState().addItem('B')
+    useListsStore.getState().addItem('C')
+    useListsStore.getState().addItem('D')
+    await flush()
+
+    // Live order (sorted by position) after 4 prepends: D, C, B, A.
+    const liveBefore = useListsStore.getState().getLiveItems(0)
+    expect(liveBefore.map((i) => i.text)).toEqual(['D', 'C', 'B', 'A'])
+
+    // Drag D to the end: new order [C, B, A, D].
+    const newOrder = [
+      liveBefore.find((i) => i.text === 'C')!,
+      liveBefore.find((i) => i.text === 'B')!,
+      liveBefore.find((i) => i.text === 'A')!,
+      liveBefore.find((i) => i.text === 'D')!,
+    ]
+    useListsStore.getState().reorderItems(0, newOrder)
+    await flush()
+
+    const raw = ipcStorageStore['jotbunker-lists']
+
+    // Clear in-memory; re-pin raw; rehydrate.
+    useListsStore.setState({
+      items: emptySlots(),
+      categories: DEFAULT_LISTS_CATEGORIES,
+      activeSlot: 0,
+    })
+    await flush()
+    ipcStorageStore['jotbunker-lists'] = raw!
+    await useListsStore.persist.rehydrate()
+
+    const liveAfter = useListsStore.getState().getLiveItems(0)
+    expect(liveAfter.map((i) => i.text)).toEqual(['C', 'B', 'A', 'D'])
+  })
+})
+
+describe('lockedListsStore persistence round-trip (desktop)', () => {
+  beforeEach(async () => {
+    resetIpcStorageFake()
+    useLockedListsStore.setState({
+      items: emptySlots(),
+      categories: DEFAULT_LOCKED_LISTS_CATEGORIES,
+      activeSlot: 0,
+    })
+    await flush()
+  })
+
+  it('persists item ids to ipcStorage after addItem', async () => {
+    useLockedListsStore.getState().addItem('secret-1')
+    useLockedListsStore.getState().addItem('secret-2')
+    await flush()
+
+    const inMemoryIds = useLockedListsStore.getState().items[0].map((i) => i.id)
+    expect(inMemoryIds).toHaveLength(2)
+
+    const raw = ipcStorageStore['jotbunker-lockedLists']
+    expect(raw).toBeDefined()
+    const persisted = JSON.parse(raw!)
+    const persistedIds = persisted.state.items[0].map((i: { id: string }) => i.id)
+    expect(persistedIds).toEqual(inMemoryIds)
+  })
+
+  it('rehydrates item ids from a stored fixture', async () => {
+    const fixtureItems = [
+      { id: 'locked-id-a', text: 'a', done: false, position: 0, createdAt: 1, updatedAt: 1 },
+      { id: 'locked-id-b', text: 'b', done: false, position: 1, createdAt: 2, updatedAt: 2 },
+    ]
+    const fixture = {
+      state: {
+        items: [fixtureItems, [], [], [], [], []],
+        categories: DEFAULT_LOCKED_LISTS_CATEGORIES,
+        activeSlot: 0,
+      },
+      version: 0,
+    }
+    ipcStorageStore['jotbunker-lockedLists'] = JSON.stringify(fixture)
+
+    await useLockedListsStore.persist.rehydrate()
+
+    const ids = useLockedListsStore.getState().items[0].map((i) => i.id)
+    expect(ids).toEqual(['locked-id-a', 'locked-id-b'])
+  })
+})

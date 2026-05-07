@@ -47,12 +47,12 @@ describe('unlock / lock', () => {
 })
 
 describe('addItem', () => {
-  it('adds an item at position 0', () => {
+  it('adds an item with a numeric position', () => {
     useLockedListsStore.getState().addItem('Secret note')
     const items = useLockedListsStore.getState().items[0]
     expect(items).toHaveLength(1)
     expect(items[0].text).toBe('Secret note')
-    expect(items[0].position).toBe(0)
+    expect(typeof items[0].position).toBe('number')
     expect(items[0].done).toBe(false)
   })
 
@@ -93,16 +93,21 @@ describe('toggleItem', () => {
 })
 
 describe('deleteItem', () => {
-  it('removes the item and recomputes positions', () => {
+  it('tombstones the item; live view excludes it and recomputes positions', () => {
     useLockedListsStore.getState().addItem('A')
     useLockedListsStore.getState().addItem('B')
     const items = useLockedListsStore.getState().items[0]
     const deleteId = items[0].id
 
     useLockedListsStore.getState().deleteItem(deleteId)
-    const remaining = useLockedListsStore.getState().items[0]
-    expect(remaining).toHaveLength(1)
-    expect(remaining[0].position).toBe(0)
+    // Raw retains the tombstone.
+    const raw = useLockedListsStore.getState().items[0]
+    expect(raw).toHaveLength(2)
+    expect(raw.find((i) => i.id === deleteId)?.deleted).toBe(true)
+    // Live view excludes it; remaining live item has a numeric position.
+    const live = useLockedListsStore.getState().getLiveItems(0)
+    expect(live).toHaveLength(1)
+    expect(typeof live[0].position).toBe('number')
   })
 })
 
@@ -129,7 +134,11 @@ describe('reorderItems', () => {
     expect(reordered[0].text).toBe('A')
     expect(reordered[1].text).toBe('B')
     expect(reordered[2].text).toBe('C')
-    expect(reordered.map((i) => i.position)).toEqual([0, 1, 2])
+    // Live items in strictly-ascending position order.
+    const positions = reordered.map((i) => i.position)
+    for (let i = 1; i < positions.length; i++) {
+      expect(positions[i]).toBeGreaterThan(positions[i - 1])
+    }
   })
 })
 

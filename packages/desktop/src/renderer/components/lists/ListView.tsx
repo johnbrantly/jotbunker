@@ -36,6 +36,11 @@ export interface ListItemData {
   position: number
   createdAt: number
   updatedAt: number
+  // Phase 2: tombstones. UI does not read these; the slice's getLiveItems
+  // selector filters tombstones upstream. Mirrored here so the props type
+  // stays assignable from StoreItem.
+  deleted?: boolean
+  deletedAt?: number | null
 }
 
 interface Props {

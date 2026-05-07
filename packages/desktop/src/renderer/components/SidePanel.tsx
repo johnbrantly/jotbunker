@@ -93,9 +93,9 @@ export default function SidePanel({ sync, activeTab }: SidePanelProps) {
     return ''
   }
 
-  const getItemsAsText = (store: { items: { text: string }[][]; activeSlot: number }): string => {
-    const items = store.items[store.activeSlot] || []
-    return items.map((item) => item.text).join('\n')
+  const getItemsAsText = (store: { getLiveItems: (slot: number) => { text: string }[]; activeSlot: number }): string => {
+    // Phase 2 SSOT: ask the slice for live items rather than filtering raw.
+    return store.getLiveItems(store.activeSlot).map((item) => item.text).join('\n')
   }
 
   const getSourceText = (): string => {
