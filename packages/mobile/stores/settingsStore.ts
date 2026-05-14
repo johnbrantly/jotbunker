@@ -24,8 +24,6 @@ interface SettingsState {
   setScratchpadFontSize: (size: number) => void;
   listFontSize: number;
   setListFontSize: (size: number) => void;
-  debugLog: boolean;
-  setDebugLog: (v: boolean) => void;
   appLockEnabled: boolean;
   setAppLockEnabled: (v: boolean) => void;
   keepAwakeEnabled: boolean;
@@ -59,8 +57,6 @@ export const useSettingsStore = create<SettingsState>()(
       setScratchpadFontSize: (size) => set({ scratchpadFontSize: size }),
       listFontSize: 15,
       setListFontSize: (size) => set({ listFontSize: size }),
-      debugLog: false,
-      setDebugLog: (v) => set({ debugLog: v }),
       appLockEnabled: false,
       setAppLockEnabled: (v) => set({ appLockEnabled: v }),
       keepAwakeEnabled: false,
@@ -73,7 +69,7 @@ export const useSettingsStore = create<SettingsState>()(
     {
       name: 'jotbunker-settings',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 2,
+      version: 3,
       migrate: (persisted: any, version: number) => {
         if (version === 0) {
           persisted.setupComplete = true;
@@ -82,6 +78,11 @@ export const useSettingsStore = create<SettingsState>()(
           // Auto-connect / auto-sync features removed; strip stale keys.
           delete persisted.autoConnectOnOpen;
           delete persisted.autoSyncOnConnect;
+        }
+        if (version < 3) {
+          // Phone-side debug toggle removed; computer is the single gate point
+          // for sync log persistence. Phone is always loud over the wire.
+          delete persisted.debugLog;
         }
         return persisted;
       },

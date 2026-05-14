@@ -249,9 +249,8 @@ export function createItemSlice(config: ItemSliceConfig) {
      * Phase 2 contract still holds: callers pass the LIVE subset of the slot
      * in its new order; the slice rebuilds the full slot as
      *   [...reorderedLive, ...preservedTombstones]
-     * Live items in the array remain in position-sort order so syncReport's
-     * array-order diff continues to see them correctly without needing
-     * tombstone-aware sort.
+     * Live items in the array remain in position-sort order so downstream
+     * consumers see them correctly without needing tombstone-aware sort.
      *
      * Do NOT revert to the pre-Phase-2 "pass the full slot" calling
      * convention. The UI no longer sees tombstones; passing the full slot

@@ -88,22 +88,6 @@ export {
   parseMessage,
 } from './sync/protocol';
 
-// Legacy sync-report types (Phase 5.5 cutover: functions deleted; types
-// retained for the desktop's pre-cutover Sync History entry rendering until
-// the rolling-10 list naturally rotates them out).
-export type {
-  SyncReport,
-  SyncSideReport,
-  SyncReportCategoryChange,
-  SyncReportSlotChanges,
-  SyncReportItemAdded,
-  SyncReportItemDeleted,
-  SyncReportItemModified,
-  SyncReportItemChecked,
-  SyncReportItemReordered,
-  SyncReportScratchpadChange,
-} from './sync/syncReport';
-
 // Store slice factories
 export { createItemSlice } from './stores/createItemSlice';
 export type { StoreItem, ItemSliceState, ItemSliceConfig } from './stores/createItemSlice';
@@ -121,8 +105,6 @@ export type {
 // Three-way merge (Phase 5)
 export {
   mergeThreeWay,
-  formatMergeSummary,
-  isMergeReportEmpty,
   formatAppliedLogLine,
 } from './sync/threeWayMerge';
 export type { MergedResult, MergeTie, MergeSection, MergeReport } from './sync/threeWayMerge';

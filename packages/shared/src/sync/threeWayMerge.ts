@@ -1,6 +1,7 @@
 import type { AncestorSnapshot } from '../stores/createAncestorSlice'
 import type { StoreItem } from '../stores/createItemSlice'
 import type { Category } from '../types'
+import { syncLog } from './syncLog'
 
 // Phase 5: pure-function three-way merge.
 //
@@ -85,39 +86,6 @@ function emptyReport(): MergeReport {
 }
 
 /**
- * Phase 5.5 helper: render a MergeReport's counts as a single human-readable
- * summary line. Used in the post-cutover Sync History list and the applied-
- * result `[merge]` log line. Returns "No changes" when the merge produced
- * nothing observable (all counts zero).
- */
-export function formatMergeSummary(r: MergeReport): string {
-  const c = r.counts
-  const parts: string[] = []
-  if (c.addedFromPhone) parts.push(`+${c.addedFromPhone} phone`)
-  if (c.addedFromDesktop) parts.push(`+${c.addedFromDesktop} desktop`)
-  if (c.editedField) parts.push(`${c.editedField} edit${c.editedField === 1 ? '' : 's'}`)
-  if (c.editedLWW) parts.push(`${c.editedLWW} LWW`)
-  if (c.tombstoned) parts.push(`${c.tombstoned} deleted`)
-  if (c.ties) parts.push(`${c.ties} tie${c.ties === 1 ? '' : 's'}`)
-  return parts.join(', ') || 'No changes'
-}
-
-/**
- * Phase 5.5 helper: returns true if the merge produced at least one change.
- * Used to gate Sync History entry creation - empty syncs (where every count
- * is zero) don't get logged, mirroring the pre-cutover behavior.
- */
-export function isMergeReportEmpty(r: MergeReport): boolean {
-  const c = r.counts
-  return c.addedFromPhone === 0
-    && c.addedFromDesktop === 0
-    && c.editedField === 0
-    && c.editedLWW === 0
-    && c.tombstoned === 0
-    && c.ties === 0
-}
-
-/**
  * Phase 5.5 post-cutover log line. Replaces the Phase 5 shadow `[merge]
  * <classification> ...` line. The maintainer reads these on every real
  * sync to confirm expected behavior - serves the "psychological intuition"
@@ -177,9 +145,13 @@ function mergeItemFields(
   ties: MergeTie[],
 ): { item: StoreItem; classification: ItemMergeClassification } {
   const result: StoreItem = { ...ancestorItem }
+  const changedFields: string[] = []
   let anyChange = false
   let anyLWW = false
   let anyTie = false
+  let phoneSide = false
+  let desktopSide = false
+  let bothSidesSame = false
 
   for (const field of ITEM_FIELDS) {
     const a = (ancestorItem as Record<string, unknown>)[field]
@@ -192,22 +164,30 @@ function mergeItemFields(
     if (phoneChanged && !desktopChanged) {
       ;(result as Record<string, unknown>)[field] = p
       anyChange = true
+      phoneSide = true
+      changedFields.push(field)
     } else if (!phoneChanged && desktopChanged) {
       ;(result as Record<string, unknown>)[field] = d
       anyChange = true
+      desktopSide = true
+      changedFields.push(field)
     } else if (phoneChanged && desktopChanged) {
       if (valEqual(p, d)) {
         ;(result as Record<string, unknown>)[field] = p
         anyChange = true
+        bothSidesSame = true
+        changedFields.push(field)
       } else {
         // Same-field conflict. LWW by updatedAt, with the equal-timestamp
         // case surfaced as a tie for dialog resolution.
         if (phoneItem.updatedAt > desktopItem.updatedAt) {
           ;(result as Record<string, unknown>)[field] = p
           anyLWW = true
+          phoneSide = true
         } else if (desktopItem.updatedAt > phoneItem.updatedAt) {
           ;(result as Record<string, unknown>)[field] = d
           anyLWW = true
+          desktopSide = true
         } else {
           ties.push({
             section,
@@ -221,6 +201,7 @@ function mergeItemFields(
           ;(result as Record<string, unknown>)[field] = p
           anyTie = true
         }
+        changedFields.push(field)
       }
     }
     // else: neither side changed; result keeps ancestor's value.
@@ -240,6 +221,20 @@ function mergeItemFields(
   else if (anyLWW) classification = 'editedLWW'
   else if (anyChange) classification = 'editedField'
   else classification = 'identical'
+
+  // Detail log line for any actual change. Privacy: section, slot, id, field
+  // names, classification, and resolution direction. NEVER any item text or
+  // field values.
+  if (classification !== 'identical') {
+    let direction: string
+    if (anyTie) direction = 'TIE'
+    else if (phoneSide && desktopSide) direction = '(both)'
+    else if (bothSidesSame) direction = '(both sides same)'
+    else if (phoneSide) direction = '(phone)'
+    else if (desktopSide) direction = '(computer)'
+    else direction = '(?)'
+    syncLog('ITEM', `${section} slot=${slot} id=${ancestorItem.id} fields=${changedFields.join(',')} ${classification} ${direction}`)
+  }
 
   return { item: result, classification }
 }
@@ -337,13 +332,28 @@ function mergeCategorySlot(
   const desktopChanged = a.label !== d.label
 
   let label = a.label
-  if (phoneChanged && !desktopChanged) label = p.label
-  else if (!phoneChanged && desktopChanged) label = d.label
-  else if (phoneChanged && desktopChanged) {
-    if (p.label === d.label) label = p.label
-    else if (p.updatedAt > d.updatedAt) label = p.label
-    else if (d.updatedAt > p.updatedAt) label = d.label
-    else {
+  if (phoneChanged && !desktopChanged) {
+    label = p.label
+    report.counts.editedField++
+    syncLog('CATEGORY', `${section} slot=${slot} renamed (phone)`)
+  } else if (!phoneChanged && desktopChanged) {
+    label = d.label
+    report.counts.editedField++
+    syncLog('CATEGORY', `${section} slot=${slot} renamed (computer)`)
+  } else if (phoneChanged && desktopChanged) {
+    if (p.label === d.label) {
+      label = p.label
+      report.counts.editedField++
+      syncLog('CATEGORY', `${section} slot=${slot} renamed (both sides same)`)
+    } else if (p.updatedAt > d.updatedAt) {
+      label = p.label
+      report.counts.editedLWW++
+      syncLog('CATEGORY', `${section} slot=${slot} LWW resolved (phone)`)
+    } else if (d.updatedAt > p.updatedAt) {
+      label = d.label
+      report.counts.editedLWW++
+      syncLog('CATEGORY', `${section} slot=${slot} LWW resolved (computer)`)
+    } else {
       ties.push({
         section,
         slot,
@@ -353,6 +363,7 @@ function mergeCategorySlot(
       })
       label = p.label
       report.counts.ties++
+      syncLog('CATEGORY', `${section} slot=${slot} TIE (same updatedAt)`)
     }
   }
 
@@ -380,13 +391,28 @@ function mergeScratchpadSlot(
   let content = a.content
   const updatedAt = Math.max(p.updatedAt, d.updatedAt)
 
-  if (phoneChanged && !desktopChanged) content = p.content
-  else if (!phoneChanged && desktopChanged) content = d.content
-  else if (phoneChanged && desktopChanged) {
-    if (p.content === d.content) content = p.content
-    else if (p.updatedAt > d.updatedAt) content = p.content
-    else if (d.updatedAt > p.updatedAt) content = d.content
-    else {
+  if (phoneChanged && !desktopChanged) {
+    content = p.content
+    report.counts.editedField++
+    syncLog('SCRATCHPAD', `slot=${slot} content changed (phone)`)
+  } else if (!phoneChanged && desktopChanged) {
+    content = d.content
+    report.counts.editedField++
+    syncLog('SCRATCHPAD', `slot=${slot} content changed (computer)`)
+  } else if (phoneChanged && desktopChanged) {
+    if (p.content === d.content) {
+      content = p.content
+      report.counts.editedField++
+      syncLog('SCRATCHPAD', `slot=${slot} content changed (both sides same)`)
+    } else if (p.updatedAt > d.updatedAt) {
+      content = p.content
+      report.counts.editedLWW++
+      syncLog('SCRATCHPAD', `slot=${slot} LWW resolved (phone)`)
+    } else if (d.updatedAt > p.updatedAt) {
+      content = d.content
+      report.counts.editedLWW++
+      syncLog('SCRATCHPAD', `slot=${slot} LWW resolved (computer)`)
+    } else {
       ties.push({
         section: 'scratchpad',
         slot,
@@ -396,6 +422,7 @@ function mergeScratchpadSlot(
       })
       content = p.content
       report.counts.ties++
+      syncLog('SCRATCHPAD', `slot=${slot} TIE (same updatedAt)`)
     }
   }
 

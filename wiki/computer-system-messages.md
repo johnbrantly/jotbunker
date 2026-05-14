@@ -1,73 +1,42 @@
 # System Messages
 
-The system messages panel is a resizable log area at the bottom of the left side panel. It shows a rolling feed of app events — saves, downloads, sync operations, backups, and errors.
-
----
+A resizable log panel at the bottom of the left side panel. It shows a rolling feed of recent app events: saves, downloads, backups, errors.
 
 ## Panel layout
 
-- **Resize handle** — drag the top edge of the panel up or down. Default height: 200px, minimum: 92px, maximum: 33% of the side panel
-- **Header** — "SYSTEM MESSAGES" label
-- **Message area** — scrollable list, newest messages at the top. Each line shows a timestamp and message text
-- **CLEAR button** — appears at the bottom when messages exist. Clears all entries from the panel (no confirmation)
+- A resize handle along the top edge. Default height 200px, minimum 92px, maximum a third of the side panel.
+- A "SYSTEM MESSAGES" header.
+- A scrolling list of messages, newest at the top. Each line has a timestamp and the message text.
+- A CLEAR button at the bottom (visible when there are messages). It clears the on-screen display only.
 
 ## Message format
-
-Each message shows:
 
 ```
 HH:MM:SS  message text
 ```
 
-Timestamps are 24-hour format (e.g., `14:32:05`).
+Timestamps are 24-hour.
 
 ## Rolling limit
 
-The panel holds a maximum of **50 messages**. When a new message is logged and the limit is reached, the oldest message is dropped.
+The panel holds at most fifty messages. When a new one arrives and the limit is hit, the oldest message drops.
 
 ## Persistence
 
-Every message is also written to disk at `%APPDATA%\JotBunker\system-messages.log` via IPC. The log file maintains the same 50-entry rolling limit. The CLEAR button only clears the in-memory display — it does not delete the log file.
+Every message is also written to disk at `%APPDATA%\JotBunker\system-messages.log`. The log file uses the same fifty-entry rolling limit. CLEAR only affects the on-screen display; the file is not deleted.
 
 ## What gets logged
 
-### App lifecycle
-- `JotBunker started` — on app launch
+The panel is for app events other than sync. Typical entries:
 
-### Jot downloads
-- `Downloading...` — when a jot download is initiated
-- `JOT {id} → {path}` — successful jot save to tag
-- `{N} JOTS → {path}` — batch download success
-- `Download failed: {error}` — download error
+- App started.
+- Jot downloads (per jot and batch).
+- Individual file saves (image, audio, file, drawing).
+- Save to tag (lists and scratchpad).
+- Jot data fetching.
+- Jot clear actions.
+- Backup and restore results.
 
-### Individual file saves
-- `Image saved to {path}` / `Image save failed: {error}`
-- `Audio saved to {path}` / `Audio save failed: {error}`
-- `File saved to {path}` / `File save failed: {error}`
-- `Drawing saved to {path}` / `Drawing save failed: {error}`
-
-### Save to tag (lists/scratchpad)
-- `{SOURCE} → {path}` — successful save (e.g., `SCRATCHPAD → C:\...`)
-- `Save failed: {error}` / `Save error: {error}`
-
-### Jot data fetching
-- `Fetching JOT {id} data...` — fetching media for save-with-media
-- `Fetching JOT {id} text...` — lazy-loading text for save
-
-### Jot clear
-- `Cleared Jot {id} from phone` — after phone confirms jot deletion
-
-### Sync events are NOT here
-Sync instrumentation (`[merge] applied ...`, `[ancestor] INFO ...`, `[tombstone] ...`, `[gc] ...`) does NOT go to System Messages. It writes to `%APPDATA%\Jotbunker\debug-logs\desktop-sync.log` instead, always-on. See [Debug Logging](debug-logging.md) for the two-stream split.
-
-### Backup and restore
-- `Secure backup saved: {path}` — encrypted backup success
-- `Backup saved: {path}` — plaintext backup success
-- `Backup error: {error}` — backup failure
-- `Backup restored successfully` — restore complete
-- `Wrong password or corrupted backup` — decryption failure
-- `Restore error: {error}` — restore failure
-
----
+Sync events do not appear here. When DEBUG LOGGING is on, every sync gets its own log file under `%APPDATA%\JotBunker\debug-logs\`. When the toggle is off, sync events are not saved anywhere. See [Debug Logging](debug-logging.md).
 
 See also: [Computer App](computer-app-overview.md) | [Debug Logging](debug-logging.md) | [Data Storage](data-storage.md)

@@ -18,13 +18,11 @@ import NetworkSyncSection from '../components/settings/NetworkSyncSection';
 import ScreenLockSection from '../components/settings/ScreenLockSection';
 import FontSizeSection from '../components/settings/FontSizeSection';
 import AccentColorSection from '../components/settings/AccentColorSection';
-import DebugLoggingSection from '../components/settings/DebugLoggingSection';
 import CategoryEditors from '../components/settings/CategoryEditors';
 import type { NetworkSyncSaveHandle } from '../components/settings/NetworkSyncSection';
 import type { ScreenLockSaveHandle } from '../components/settings/ScreenLockSection';
 import type { FontSizeSaveHandle } from '../components/settings/FontSizeSection';
 import type { AccentColorSaveHandle } from '../components/settings/AccentColorSection';
-import type { DebugLoggingSaveHandle } from '../components/settings/DebugLoggingSection';
 import type { CategoryEditorsSaveHandle } from '../components/settings/CategoryEditors';
 
 const INPUT_ACCESSORY_ID = 'settings-done';
@@ -37,7 +35,6 @@ export default function SettingsScreen() {
   const lockRef = useRef<ScreenLockSaveHandle>(null);
   const fontRef = useRef<FontSizeSaveHandle>(null);
   const colorRef = useRef<AccentColorSaveHandle>(null);
-  const debugRef = useRef<DebugLoggingSaveHandle>(null);
   const catsRef = useRef<CategoryEditorsSaveHandle>(null);
 
   const handleSave = () => {
@@ -45,7 +42,6 @@ export default function SettingsScreen() {
     lockRef.current?.save();
     fontRef.current?.save();
     colorRef.current?.save();
-    debugRef.current?.save();
     catsRef.current?.save();
     router.back();
   };
@@ -114,10 +110,6 @@ export default function SettingsScreen() {
             onCatFocus={() => {}}
             onCatBlur={() => {}}
           />
-
-          <View style={styles.divider} />
-
-          <DebugLoggingSection ref={debugRef} />
 
         </ScrollView>
 

@@ -1,8 +1,6 @@
-# Tags & Filing
+# Tags and Filing
 
 Computer-side organization. Tag a jot with a label, and its content gets filed to a folder on your filesystem.
-
----
 
 ## How it works
 
@@ -12,7 +10,7 @@ Tags are labels you create in the computer app's side panel. When you tag a jot,
 {tagRootPath}/{tagName}/
 ```
 
-The tag root path is user-configurable (defaults to `Documents/JotBunker Tags/`). Each filed item gets a timestamped filename (e.g., `20260412143022-filename.ext`). Images are copied as-is, drawings are rasterized to PNG, audio stays as `.m4a`, files are copied, and text becomes a `.txt` file.
+The tag root path is yours to configure (default `Documents/JotBunker Tags/`). Each filed item gets a timestamped filename, for example `20260412143022-filename.ext`. Images are copied as-is, drawings are saved as PNG, audio stays as `.m4a`, files are copied, and text becomes a `.txt` file.
 
 ## Tag management
 
@@ -20,52 +18,49 @@ The tag root path is user-configurable (defaults to `Documents/JotBunker Tags/`)
 
 The tag list lives in the left side panel. From top to bottom:
 
-- **TAGS** header with info tooltip
-- **Add tag** — input field ("New tag...") + ADD button. Enter key also adds
-- **Search** — input field ("Search tags...") + SEARCH/CLEAR button. Filters the tag list in real time. Shows "{n} of {total} tags" when filtering
-- **Tag list** — scrollable list of tags. Favorites sort to the top; within each group, sorted alphabetically. Click a tag to select it as the active filing destination. Click again or press Escape to deselect
-- **MANAGE** button — opens the Manage Tags dialog (see below)
-- **Save-to-tag button** (pinned at bottom) — shows where the currently active list or scratchpad would be saved:
+- **TAGS header** with an info tooltip.
+- **Add tag.** An input field ("New tag...") plus an ADD button. Enter also adds.
+- **Search.** An input field ("Search tags...") plus a SEARCH/CLEAR button. Filters the tag list in real time and shows "{n} of {total} tags" when filtering.
+- **Tag list.** Scrollable. Favorites sort to the top; within each group, alphabetical. Click a tag to select it as the active filing destination. Click again or press Escape to deselect.
+- **MANAGE button.** Opens the Manage Tags dialog (see below).
+- **Save-to-tag button** (pinned at the bottom). Shows where the currently active list or scratchpad would be saved:
 
 ```
-SAVE {LIST|LOCKED LIST|SCRATCHPAD}
+SAVE {LIST | LOCKED LIST | SCRATCHPAD}
 {CATEGORY NAME}
-→ {selected tag name}
+to {selected tag name}
 ```
 
-When no tag is selected, it shows "SELECT A TAG TO SAVE" (disabled). Not shown when on the Jots tab with no tag selected.
+When no tag is selected, it shows "SELECT A TAG TO SAVE" (disabled). It is hidden when you are on the Jots tab with no tag selected.
 
 ### Manage Tags dialog
 
-Opened via the MANAGE button. A modal dialog titled "MANAGE TAGS" showing all tags sorted alphabetically. For each tag:
+Opens from the MANAGE button. Shows all tags in alphabetical order. For each tag:
 
-- **Heart icon** — toggle favorite on/off. Quicksave is always favorited and cannot be toggled
-- **Tag label** — shown with strikethrough in red if marked for deletion
-- **Delete icon (✕)** — mark/unmark for deletion. Quicksave cannot be deleted
+- **Heart icon.** Toggle favorite on or off. Quicksave is always favorited and cannot be toggled.
+- **Tag label.** Shown with red strikethrough if marked for deletion.
+- **Delete icon.** Mark or unmark for deletion. Quicksave cannot be deleted.
 
-Changes are batched — nothing is applied until you click:
-- **CANCEL** — discards all changes
-- **APPLY** — applies favorite toggles and deletions. Button shows deletion count when tags are marked (e.g., "APPLY (2 deletions)")
+Changes are batched; nothing applies until you click APPLY. CANCEL discards them. The APPLY button shows the deletion count when tags are marked, for example "APPLY (2 deletions)".
 
-Deleting a tag removes the label from JotBunker but does **not** delete the filed content from your filesystem.
+Deleting a tag removes the label from JotBunker. It does NOT delete the filed content from your filesystem.
 
 A **Quicksave** tag exists by default, is always favorited, and cannot be deleted.
 
 ## What gets filed
 
 When you file a jot to a tag:
-- Jot text → `{timestamp}-{filename}.txt`
-- Each image → `{timestamp}-image_{n}.{ext}`
-- Each audio recording → `{timestamp}-audio_{n}.m4a`
-- Each file attachment → `{timestamp}-{originalFilename}`
-- Drawing → `{timestamp}-drawing.png`
 
-Files are plain files on your filesystem. You can search them, back them up, or feed them into any knowledge management system you want.
+- Jot text becomes `{timestamp}-{filename}.txt`.
+- Each image becomes `{timestamp}-image_{n}.{ext}`.
+- Each audio recording becomes `{timestamp}-audio_{n}.m4a`.
+- Each file attachment becomes `{timestamp}-{originalFilename}`.
+- Drawings become `{timestamp}-drawing.png`.
+
+These are plain files on your filesystem. You can search them, back them up, or feed them into any knowledge management system you want.
 
 ## Computer-only
 
-Tags exist only on the computer. The phone doesn't know about tags — it's a filing and organization layer that sits on top of the sync/download system.
-
----
+Tags exist only on the computer. The phone does not know about tags; tagging is a filing layer that sits on top of the sync and download system.
 
 See also: [Jots](jots.md) | [Computer App](computer-app-overview.md)

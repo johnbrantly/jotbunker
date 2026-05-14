@@ -9,7 +9,7 @@ import type { SyncWireMessage, Handshake, KeyInit, DebugLogMessage } from '@jotb
 import { parseMessage, syncLog, setSyncLogEnabled, setSyncLogSink } from '@jotbunker/shared'
 import { writeJotFiles } from './download'
 import { getWindow } from './window'
-import { initDebugLogWriter, getDebugLogWriter } from './sync/debugLogFile'
+import { configureLogDir, startSession, getCurrentSession, closeCurrentSession } from './sync/debugLogFile'
 
 // Node.js Buffer-based base64 helpers
 function toBase64(bytes: Uint8Array): string {
@@ -28,6 +28,7 @@ let phoneDeviceId: string | null = null
 let desktopKeyPair: nacl.BoxKeyPair | null = null
 let sharedKey: Uint8Array | null = null
 let pairingSecret = ''
+let debugLogEnabled = false
 interface PendingDownload { tagRootPath: string; tagName: string }
 const pendingDownloadQueue: PendingDownload[] = []
 
@@ -128,9 +129,9 @@ function handleMessage(raw: string): void {
 
     case 'debug_log': {
       const dlm = msg as DebugLogMessage
-      const logWriter = getDebugLogWriter()
-      if (logWriter) {
-        for (const line of dlm.lines) logWriter.writePhone(line)
+      const session = getCurrentSession()
+      if (session) {
+        for (const line of dlm.lines) session.write(`[phone] ${line}`)
       }
       break
     }
@@ -175,20 +176,34 @@ function registerIpcHandlers(): void {
     send({ type: 'file_request', ...data })
   })
 
-  // Debug logging
+  // Debug logging - asymmetric architecture:
+  //  Phone is always loud (setSyncLogEnabled(true) unconditionally on the
+  //  phone side); computer is the single gate point for persistence.
+  //
+  //  Toggle ON  -> per-session writer opens on each WebSocket connection,
+  //                main + renderer syncLog calls both land in the file.
+  //  Toggle OFF -> no writer, no file ever created. All calls drop.
   ipcMain.on('sync:set-debug-log', (_event, enabled: boolean) => {
+    debugLogEnabled = enabled
     setSyncLogEnabled(enabled)
     if (enabled) {
-      const writer = initDebugLogWriter(app.getPath('userData'))
-      setSyncLogSink(writer.writeDesktop)
+      configureLogDir(app.getPath('userData'))
+      // If a phone is already connected when toggle flips on, start a
+      // session immediately so subsequent activity gets captured.
+      if (phoneSocket && phoneSocket.readyState === WebSocket.OPEN) {
+        startSession()
+      }
+      setSyncLogSink((line) => getCurrentSession()?.write(line))
     } else {
       setSyncLogSink(null)
+      closeCurrentSession()
     }
   })
 
+  // Renderer-sourced lines (via shared syncLog -> sink -> electronAPI.sendDebugLog
+  // -> this IPC). Drops on the floor when no session is open.
   ipcMain.on('sync:renderer-log', (_event, line: string) => {
-    const writer = initDebugLogWriter(app.getPath('userData'))
-    writer.writeDesktop(line)
+    getCurrentSession()?.write(line)
   })
 
   // Pairing secret
@@ -224,7 +239,6 @@ export function startSyncServer(port = 8080): void {
 
   wss.on('connection', (ws, req) => {
     const replacing = phoneSocket && phoneSocket.readyState === WebSocket.OPEN
-    syncLog('CONN', `Phone connected${replacing ? ' (replacing stale connection)' : ''}`)
     if (phoneSocket && phoneSocket.readyState === WebSocket.OPEN) {
       phoneSocket.close()
     }
@@ -235,6 +249,12 @@ export function startSyncServer(port = 8080): void {
 
     phoneSocket = ws
 
+    // Start a fresh sync session log file if the user has DEBUG LOGGING on.
+    // Each WebSocket connect = new file. Logged after startSession so the
+    // CONN line lands in the new file, not the previous one.
+    if (debugLogEnabled) startSession()
+    syncLog('CONN', `Phone connected${replacing ? ' (replacing stale connection)' : ''}`)
+
     // Enable TCP keepalive so dead connections (app killed, phone off) are detected
     // within ~10s instead of waiting for TCP's default timeout
     req.socket.setKeepAlive(true, 5_000)
@@ -242,8 +262,19 @@ export function startSyncServer(port = 8080): void {
     notifyRenderer('sync:status', { connectionState: 'socket_open', deviceId: null })
 
     ws.on('message', (data) => { handleMessage(data.toString()) })
-    ws.on('close', () => { if (ws === phoneSocket) { syncLog('CONN', 'Phone disconnected'); resetConnection() } })
-    ws.on('error', () => { if (ws === phoneSocket) resetConnection() })
+    ws.on('close', () => {
+      if (ws === phoneSocket) {
+        syncLog('CONN', 'Phone disconnected')
+        resetConnection()
+        closeCurrentSession()
+      }
+    })
+    ws.on('error', () => {
+      if (ws === phoneSocket) {
+        resetConnection()
+        closeCurrentSession()
+      }
+    })
   })
 
   httpServer.listen(port)

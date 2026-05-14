@@ -1,61 +1,53 @@
 # Computer Settings
 
-Settings modal accessed via the gear icon in the top chrome. Changes are not applied until you click **SAVE**. **CANCEL** discards all changes. Title: "SETTINGS".
-
----
+The settings modal opens from the gear icon in the top chrome. Changes do not apply until you click **SAVE**. **CANCEL** discards changes.
 
 ## Network Sync
 
-Controls the WebSocket server that your phone connects to.
+Controls the WebSocket server your phone connects to.
 
 ### Adapter and port
 
 | Element | Type | Default | Description |
 |---|---|---|---|
-| ADAPTER PHONE CONNECTS THROUGH | Dropdown | First available | Lists network interfaces by name and IP (e.g., "Wi-Fi — 192.168.1.100"). Shows "— select adapter —" when none selected. If a previously selected adapter is no longer available, an orange warning appears |
-| PORT THIS COMPUTER LISTENS ON | Number input | 8080 | Range: 1–65535. The WebSocket port the phone connects to |
+| ADAPTER PHONE CONNECTS THROUGH | Dropdown | First available | Lists network interfaces by name and IP. If a previously selected adapter is unavailable, an orange warning appears. |
+| PORT THIS COMPUTER LISTENS ON | Number input | 8080 | Range 1 to 65535. The port your phone connects to. |
 
 ### QR pairing code
 
-Only visible when an adapter is selected.
+Visible when an adapter is selected.
 
 | Element | Type | Description |
 |---|---|---|
-| QR code | Display (140×140px) | Encodes `{ip}:{port}:{secret}` for the phone to scan |
-| IP:Port | Display (monospace) | Shows `{ip}:{port}` below the QR code |
-| SHOW SECRET / HIDE SECRET | Toggle button | Reveals or hides the full pairing secret UUID |
-
----
+| QR code | Display | Encodes the IP, port, and pairing secret for your phone to scan |
+| IP:Port | Display | Shown below the QR code |
+| SHOW SECRET / HIDE SECRET | Toggle button | Reveals or hides the full pairing secret |
 
 ## Accent Color
 
-Live color preview circle (24×24px) in the section header updates as you adjust.
+A live preview circle in the section header updates as you adjust.
 
 | Element | Type | Default | Description |
 |---|---|---|---|
-| Hue | Range slider (rainbow gradient) | 205 | Range: 0–360°. Selects the base accent color |
-| Grayscale | Range slider (color-to-gray gradient) | 75 | Range: 0–100. 0 = full color, 100 = monochrome. Gradient updates based on selected hue |
-| RESTORE DEFAULT | Button | — | Resets hue to 205 and grayscale to 75 (desaturated steel blue). Shows a preview circle of the default color |
+| Hue | Range slider | 205 | Range 0 to 360 degrees. The base accent color. |
+| Grayscale | Range slider | 75 | Range 0 to 100. 0 is full color, 100 is monochrome. |
+| RESTORE DEFAULT | Button | (none) | Resets to a desaturated steel blue (hue 205, grayscale 75). |
 
-See [Theming](theming.md) for how `buildTheme(hue, grayscale)` generates the full palette.
-
----
+See [Theming](theming.md) for the palette details.
 
 ## Font Size
 
-Pill toggles (S / M / L) for each text area.
+Three-size pill toggles for each text area.
 
 | Element | Options | Default | Description |
 |---|---|---|---|
-| SCRATCHPAD | S (13px) · M (16px) · L (20px) | M | Font size for scratchpad text editor |
-| LISTS | S (12px) · M (15px) · L (19px) | M | Font size for list items (applies to both Lists and Locked Lists) |
-| TAGS | S (9px) · M (10px) · L (12px) | M | Font size for tag labels in the side panel. Computer-only — phone does not have this setting |
-
----
+| SCRATCHPAD | S / M / L | M | Font size in the scratchpad editor |
+| LISTS | S / M / L | M | Font size in lists (and locked lists) |
+| TAGS | S / M / L | M | Font size for tag labels in the side panel. Computer only. |
 
 ## Categories
 
-Three independent category editors. Each shows 6 numbered text inputs.
+Three independent category editors, each with six numbered text inputs.
 
 | Editor | Default categories |
 |---|---|
@@ -63,62 +55,44 @@ Three independent category editors. Each shows 6 numbered text inputs.
 | LISTS CATEGORIES | ASAP, TODO, WORK, HOME, SHOP, TEMP |
 | LOCKED LISTS CATEGORIES | NAMES, PLACES, LEGAL, LOGINS, CRATE, CUSTOM |
 
-**Input constraints:**
-- Auto-uppercase
-- Max length: 10 characters
-
-Unlike the phone, no biometric authentication is required to edit Locked Lists categories on the computer.
-
----
+Category names auto-uppercase and have a maximum length of ten characters. Unlike the phone, no biometric prompt is required to edit Locked Lists categories on the computer.
 
 ## Save Folder
 
 | Element | Type | Default | Description |
 |---|---|---|---|
-| TAG SAVE FOLDER | Path display + CHANGE button | `Documents\JotBunker Tags` | Shows the current tag root path (right-to-left text direction with ellipsis for long paths). CHANGE opens a folder picker dialog |
+| TAG SAVE FOLDER | Path display plus CHANGE button | `Documents\JotBunker Tags` | The root folder for all tagged content. CHANGE opens a folder picker. |
 
-This is the root directory where all [tagged content](computer-tags.md) is filed. Each tag creates a subfolder: `{tagRootPath}\{tagName}\`.
-
----
+Each tag creates a subfolder beneath this root: `{tagRootPath}\{tagName}\`. See [Tags & Filing](computer-tags.md).
 
 ## Data Backup
 
-Three action buttons for backup and restore. See [Backup & Restore](computer-backup.md) for details on encryption and file format.
+Three buttons for backup and restore. See [Backup & Restore](computer-backup.md) for encryption details.
 
-| Element | Type | Description |
-|---|---|---|
-| SECURE BACKUP | Button | Opens a password dialog (create mode with confirmation field). Encrypts all data with AES-GCM (PBKDF2 key derivation, 100k iterations). Saves to a file with salt, IV, and ciphertext |
-| BACKUP | Button | Exports all data as a plaintext JSON file. No password required |
-| RESTORE | Button | Opens a file picker. Detects encrypted vs plaintext. Encrypted files prompt for password (unlock mode). Plaintext files show a confirmation dialog |
+| Element | Description |
+|---|---|
+| SECURE BACKUP | Prompts for a password and encrypts the backup with AES-GCM |
+| BACKUP | Exports all data as plain JSON, no password required |
+| RESTORE | Opens a file picker. Encrypted files prompt for a password. Plaintext files show a confirmation dialog. |
 
-**What's backed up:** scratchpad contents/categories, lists items/categories, locked lists items/categories, tags, export timestamp.
-
-**Restore confirmation:** "This will replace ALL your current Scratchpad, Lists, Locked Lists, and Tags data with the backup. This cannot be undone."
-
-**After restore:** `lastSyncTimestamp` is reset so the next sync performs a full merge.
-
----
+A restore replaces your current lists, locked lists, scratchpad, and tags with the backup contents. The next sync runs as a fresh merge.
 
 ## Debug Logging
 
 | Element | Type | Default | Description |
 |---|---|---|---|
-| DEBUG LOGGING | Toggle (OFF/ON) | OFF | Enables sync protocol logging. Writes to `%APPDATA%\JotBunker\debug-logs\` |
+| DEBUG LOGGING | Toggle (OFF/ON) | OFF | When on, writes a log file for each sync session to `%APPDATA%\JotBunker\debug-logs\`. |
 
-See [Debug Logging](debug-logging.md) for details on log format and file locations.
+See [Debug Logging](debug-logging.md).
 
----
+## Sync conflict resolution
 
-## Sync History
+Sync runs an automatic merge on every SYNC NOW. Both sides' edits survive without you picking a winner. Two rare dialogs can interrupt the sync:
 
-| Element | Type | Description |
-|---|---|---|
-| VIEW SYNC HISTORY | Button | Opens the sync log modal showing the last 10 sync entries |
+**Sync conflict.** Opens when both devices changed the same value at the exact same moment. The app shows a small dialog with the phone's value and the computer's value side by side; pick a side per row. Sixty-second auto-cancel. Cancelling leaves both devices unchanged.
 
-Sync runs an automatic three-way merge on every SYNC NOW — both sides' edits survive without you picking a winner. The legacy "pick a side" dialog now only fires on a genuine field-level tie (same field, same item, identical `updatedAt` ms on both sides). When it does open, the per-tie picker has a 60-second auto-cancel. If cancelled or timed out, no data changes on either device and `lastSyncTimestamp` is not updated; the connection stays live.
+**Large change detected.** Opens when eighty percent or more of the items the computer remembered from the last sync are missing on one side with no deletion records. Almost always this means one device was reinstalled or wiped. Three buttons: USE COMPUTER DATA, USE PHONE DATA, CANCEL SYNC. The picked side's data is sent to the other device. Sixty-second auto-cancel.
 
-See [Sync History](computer-settings-sync-history.md) for the history viewer and the rare tie-picker dialog details.
-
----
+For diagnosing sync issues, turn on DEBUG LOGGING. Every connection writes a `sync-{timestamp}.log` file under `%APPDATA%\JotBunker\debug-logs\` capturing the full sync conversation. See [Debug Logging](debug-logging.md).
 
 See also: [Computer App](computer-app-overview.md) | [Phone Settings](phone-settings.md) | [Theming](theming.md) | [Backup & Restore](computer-backup.md)

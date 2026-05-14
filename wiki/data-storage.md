@@ -1,94 +1,80 @@
 # Data Storage
 
-Where data lives on each platform, what's encrypted, and what OS-level backups cover.
+Where your data lives on each device, what is encrypted, and what OS-level backups cover.
 
----
+## Mobile (iOS and Android)
 
-## Mobile (iOS/Android)
+### App data
 
-### Store data (AsyncStorage)
+All of the phone app's data is stored as JSON in the app's private sandbox:
 
-All Zustand stores persist to AsyncStorage as JSON:
+- **Jots.** Text, drawings, image references, file references, recording references.
+- **Lists.** Items and categories.
+- **Locked Lists.** Items and categories. The unlocked state is in memory only.
+- **Scratchpads.** Text by category, categories.
+- **Ancestor.** A snapshot of the last successful sync. Used to merge cleanly next time.
+- **Settings.** Theme, sync config, pairing secret, security settings, font sizes.
 
-| Key | Contents |
-|---|---|
-| `jotbunker-jots` | 6 jots: text, drawing (SVG JSON), image URIs, file URIs, recording URIs |
-| `jotbunker-lists` | Items (raw, including tombstones), categories, active category |
-| `jotbunker-lockedLists` | Items (raw, including tombstones), categories, active category (isUnlocked is transient — not persisted) |
-| `jotbunker-scratchpad` | Text by category, categories, active category |
-| `jotbunker-ancestor` | Last-successful-sync snapshot used as the third party in three-way merge |
-| `jotbunker-settings` | Theme, sync config, pairing secret, security settings, font sizes, debug toggle |
-
-AsyncStorage is plaintext in the app's private sandbox.
+App data is plain text in the app's private sandbox.
 
 ### Binary files
 
-- **Audio recordings** — `.m4a` files written by expo-audio to a temporary/cache directory. Referenced by URI in `jotbunker-jots`.
-- **Images** — URIs from expo-image-picker. If picked from the photo library, the original stays in Photos. The URI may point to a temp copy.
-- **File attachments** — files picked via expo-document-picker. Referenced by URI, fileName, mimeType, and size in `jotbunker-jots`.
-- **Drawings** — stored as JSON strings (SVG path data) inside the jots store. No separate files.
+- **Audio recordings.** `.m4a` files written to a temporary or cache directory. The jot store holds a reference.
+- **Images.** References to URIs from the photo picker. If you pick from your photo library, the original stays in Photos.
+- **File attachments.** Files picked from the device. The jot store holds a reference plus file name, mime type, and size.
+- **Drawings.** Stored inside the jot data, not as separate files.
 
-### iCloud / OS backup coverage
+### iCloud and OS backup coverage
 
-- **AsyncStorage** → stored in the app's SQLite database → **included in iCloud backup**
-- **Audio files** → in temp/cache directories → **excluded from iCloud backup**
-- **Image URIs** → may reference temp copies → **URIs may break after restore** (files gone, references stale)
+- App data goes to the app's database, which is included in iCloud backup.
+- Audio files in temp or cache directories are excluded from iCloud backup.
+- Image references may point to temporary copies that break after restore.
 
-Bottom line: an iCloud restore recovers all text data (lists, scratchpad, settings, jot text, drawings) but **audio recordings and image attachments are lost**.
-
----
+Bottom line: an iCloud restore recovers all text data (lists, scratchpads, settings, jot text, drawings), but audio recordings and image attachments are lost.
 
 ## Computer (Windows)
 
-All data lives in `%APPDATA%\JotBunker\`:
+All app data lives under `%APPDATA%\JotBunker\`.
 
-### Store data
+### Stored data
 
 ```
 stores/
-├── jotbunker-lists.json
-├── jotbunker-lockedLists.json
-├── jotbunker-scratchpad.json
-├── jotbunker-ancestor.json       ← last-successful-sync snapshot for three-way merge
-├── jotbunker-settings.json       ← contains pairing secret in plaintext
-├── jotbunker-tags.json
-├── jotbunker-console.json
-└── jotbunker-sync-history.json
+  Lists, Locked Lists, Scratchpad
+  Ancestor (last successful sync snapshot)
+  Settings (pairing secret stored in plain text)
+  Tags
+  Console (system messages log)
 ```
 
-Plaintext JSON files, read/written by the main process via IPC.
+These are plain JSON files.
 
 ### Other files
 
 | File | Purpose |
 |---|---|
 | `window-state.json` | Window position and size |
-| `autoupdate-disabled.flag` | Opt-out flag for auto-update |
-| `system-messages.log` | Rolling 50-entry app log for non-sync events (saves, downloads, backups, errors) |
-| `debug-logs/desktop-sync.log` | Always-on sink for sync instrumentation (`[merge]`, `[ancestor]`, `[tombstone]`, `[gc]`); also captures toggle-gated transport-level protocol events when DEBUG LOGGING is on |
-| `debug-logs/phone-sync.log` | Toggle-gated phone transport-level protocol log (received over wire) |
+| `autoupdate-disabled.flag` | Opt-out flag for auto-update startup check |
+| `system-messages.log` | Rolling fifty-entry app log for non-sync events |
+| `debug-logs/sync-{timestamp}.log` | One file per sync session. Only written when DEBUG LOGGING is on. Captures every sync event from both devices in a single file; phone-side events are prefixed `[phone]`. |
 
 ### User-facing exports
 
 | Path | Contents |
 |---|---|
-| `Documents/JotBunker Downloads/` | Downloaded jot content (timestamped folders) |
-| `{tagRootPath}/{tagName}/` (defaults to `Documents/JotBunker Tags/`) | Tagged/filed content (text, images, files, audio, drawings) |
+| `{tagRootPath}/{tagName}/<timestamp>/JotN/...` (default `Documents/JotBunker Tags/`) | Bulk Download All output |
+| `{tagRootPath}/{tagName}/{ts}-<filename>` | Per-item downloads and per-jot tag saves |
 
----
-
-## What's encrypted vs plaintext
+## What is encrypted vs. plain text
 
 | Data | Mobile | Computer |
 |---|---|---|
-| Lists / Locked Lists | Plaintext (AsyncStorage) | Plaintext (JSON file) |
-| Scratchpad | Plaintext (AsyncStorage) | Plaintext (JSON file) |
-| Pairing secret | Plaintext (AsyncStorage) | Plaintext (JSON file) |
-| Sync traffic | NaCl secretbox (on wire only) | NaCl secretbox (on wire only) |
-| Backup files | N/A | AES-GCM (encrypted) or plaintext (user choice) |
+| Lists / Locked Lists | Plain text on device | Plain text on disk |
+| Scratchpad | Plain text on device | Plain text on disk |
+| Pairing secret | Plain text on device | Plain text on disk |
+| Sync traffic | NaCl encrypted on the wire | NaCl encrypted on the wire |
+| Backup files | Not applicable | AES-GCM encrypted, or plain text (your choice) |
 
 See [Security](security.md) for the full threat model.
-
----
 
 See also: [Security](security.md) | [Backup](computer-backup.md) | [Computer App](computer-app-overview.md) | [Phone App](phone-app-overview.md)

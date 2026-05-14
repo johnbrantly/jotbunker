@@ -1,5 +1,12 @@
 # JotBunker Changelog
 
+## [v1.1.1] - 2026-05-14
+
+- Sync: large-divergence safety gate. If 80% or more of the ancestor's items are missing from one side (fresh phone, post-restore, wiped device), the LARGE CHANGE DETECTED dialog appears instead of merging silently. Pick USE COMPUTER DATA or USE PHONE DATA and the chosen device's snapshot lands wholesale on both sides. 
+- Sync: post-restore now wipes the ancestor automatically. The next sync treats both sides as fresh and unions cleanly instead of treating restored items as deletions to propagate.
+- Debug logging: rewritten as per-session log files at `%APPDATA%\JotBunker\debug-logs\sync-{timestamp}.log`. Each sync produces a structured log with `[CONN]`, `[ENGINE]`, `[MANIFEST]`, `[STATE]`, `[ITEM]`, `[CATEGORY]`, `[SCRATCHPAD]`, `[ANCESTOR]`, `[MERGE]`, and `[SYNC]` lines. Phone interleaves its own lines into the same file as `[phone] [SYNC] ...`. Asymmetric architecture: phone always emits, computer is the single gate point for on-disk persistence via the existing DEBUG LOGGING toggle.
+- Removed Sync History settings panel and dialog. The debug log file is the single triage surface when something needs investigating.
+
 ## [v1.1.0] - 2026-05-07
 - Sync: no longer makes you pick a side. The "DESKTOP WINS / PHONE WINS / CANCEL" dialog from v1.0.7 is replaced with an automatic merge.  Both devices' changes survive every sync. Add three items on your phone, cross off two on your computer, both happen in one sync.
 - Settings: the "SYNC PREVIEW" section becomes "SYNC HISTORY" again — the dialog is now a rare per-tie / large-delta picker, not a mandatory pre-sync prompt. The history viewer keeps a rolling 10 most recent syncs with a counts summary.

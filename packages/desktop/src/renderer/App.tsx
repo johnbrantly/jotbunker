@@ -5,7 +5,7 @@ import BottomNav from './components/BottomNav'
 import SettingsModal from './components/SettingsModal'
 import AboutModal from './components/AboutModal'
 import SyncReportDialog from './components/SyncReportDialog'
-import SyncLogDialog from './components/SyncLogDialog'
+import { cssFont } from './styles/tokens'
 
 import JotsTab from './components/jots/JotsTab'
 import ListsTab from './components/lists/ListsTab'
@@ -27,14 +27,13 @@ const subscribeHydration = (cb: () => void) => {
 const getHydrated = () => useSettingsStore.persist.hasHydrated()
 
 export default function App() {
-  const { colors } = useTheme()
+  const { colors, confirmDialog: d } = useTheme()
   const hydrated = useSyncExternalStore(subscribeHydration, getHydrated)
   const setupComplete = useSettingsStore((s) => s.setupComplete)
   const setSetupComplete = useSettingsStore((s) => s.setSetupComplete)
   const [activeTab, setActiveTab] = useState<TabKey>('jots')
   const [showSettings, setShowSettings] = useState(false)
   const [showAbout, setShowAbout] = useState(false)
-  const [showSyncLog, setShowSyncLog] = useState(false)
   const [updateState, setUpdateState] = useState<'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'up-to-date' | 'error'>('idle')
   const [updateVersion, setUpdateVersion] = useState<string | null>(null)
   const [updateProgress, setUpdateProgress] = useState<{ percent: number; bytesPerSecond: number; transferred: number; total: number } | null>(null)
@@ -162,15 +161,39 @@ export default function App() {
         />
       </div>
       {showSettings && (
-        <SettingsModal onClose={() => setShowSettings(false)} onOpenSyncLog={() => setShowSyncLog(true)} />
+        <SettingsModal onClose={() => setShowSettings(false)} />
       )}
       {showAbout && (
         <AboutModal onClose={() => setShowAbout(false)} />
       )}
       <SyncReportDialog />
-      {showSyncLog && (
-        <SyncLogDialog onClose={() => setShowSyncLog(false)} />
-      )}
+      {sync.pendingDivergence && (() => {
+        const counts = sync.pendingDivergence
+        const computerWouldLose = counts.case3
+        const phoneWouldLose = counts.case2
+        const message = computerWouldLose >= phoneWouldLose
+          ? `The phone is missing ${computerWouldLose} of ${counts.ancestorLive} items last seen at sync. This usually means a fresh install or wiped phone.`
+          : `The computer is missing ${phoneWouldLose} of ${counts.ancestorLive} items last seen at sync. This usually means a fresh install or wiped computer.`
+        return (
+          <div style={{ position: 'fixed', inset: 0, backgroundColor: d.overlayBg, backdropFilter: `blur(${d.blurAmount}px)`, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+            <div style={{ backgroundColor: colors.dialogBg, borderWidth: 1, borderStyle: 'solid', borderColor: colors.dialogBorder, borderRadius: d.boxRadius, paddingTop: d.boxPaddingV, paddingBottom: d.boxPaddingV, paddingLeft: d.boxPaddingH, paddingRight: d.boxPaddingH, width: 440, display: 'flex', flexDirection: 'column', gap: d.boxGap }}>
+              <span style={{ ...cssFont('DMSans-Black'), fontSize: d.titleFontSize, color: colors.textPrimary, letterSpacing: d.titleFontSize * d.titleLetterSpacing, textAlign: 'center' }}>LARGE CHANGE DETECTED</span>
+              <span style={{ ...cssFont('DMSans-Regular'), fontSize: 13, color: colors.textPrimary, lineHeight: 1.45, textAlign: 'left' }}>{message}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: d.btnGap }}>
+                <button style={{ width: '100%', paddingTop: d.btnPaddingV, paddingBottom: d.btnPaddingV, borderRadius: d.btnRadius, backgroundColor: colors.primary, borderWidth: 0, cursor: 'pointer', ...cssFont('DMSans-Bold'), fontSize: d.btnFontSize, color: colors.dialogBg }} onClick={() => sync.respondDivergence('computer')}>
+                  USE COMPUTER DATA
+                </button>
+                <button style={{ width: '100%', paddingTop: d.btnPaddingV, paddingBottom: d.btnPaddingV, borderRadius: d.btnRadius, backgroundColor: colors.primary, borderWidth: 0, cursor: 'pointer', ...cssFont('DMSans-Bold'), fontSize: d.btnFontSize, color: colors.dialogBg }} onClick={() => sync.respondDivergence('phone')}>
+                  USE PHONE DATA
+                </button>
+                <button style={{ width: '100%', paddingTop: d.btnPaddingV, paddingBottom: d.btnPaddingV, borderRadius: d.btnRadius, backgroundColor: d.cancelBg, borderWidth: 1, borderStyle: 'solid', borderColor: d.cancelBorder, cursor: 'pointer', ...cssFont('DMSans-Bold'), fontSize: d.btnFontSize, color: colors.textPrimary }} onClick={() => sync.respondDivergence('cancel')}>
+                  CANCEL SYNC
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
       {updateState !== 'idle' && (
         <UpdateModal
           state={updateState}

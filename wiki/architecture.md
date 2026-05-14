@@ -1,75 +1,37 @@
 # Architecture
 
-Monorepo with three packages: shared foundation, mobile app, computer app.
+JotBunker is split into three pieces that share a common foundation. This page gives you a one-page tour for anyone evaluating the project or looking for the right place to make a change.
 
----
+## The three packages
 
-## Monorepo layout
+**Shared.** Plain TypeScript with no platform dependencies. The data shapes, the theme system, the sync engine, and the conflict-resolution logic all live here so the phone and the computer agree on every detail. Both apps import from this package.
 
-```
-jotbunker/                        # npm workspaces root
-├── packages/
-│   ├── shared/                   # Pure TypeScript library
-│   ├── mobile/                   # Expo Router app (iOS/Android)
-│   └── desktop/                  # Electron + electron-vite (Windows)
-├── wiki/                         # This documentation
-├── vitest.config.ts              # Multi-project test config
-└── .github/workflows/release.yml # Tag → Windows build → GitHub release
-```
+**Mobile.** The phone app, built on Expo and React Native. Targets iOS and Android from the same codebase. The mobile app is the capture device: it owns the jots and lets you edit lists and scratchpads on the go. Local data lives in the phone's app sandbox.
 
-## Shared package (`packages/shared/`)
+**Computer.** The desktop app, built on Electron for Windows. The computer app is the home base. It runs a small WebSocket server on your local network that your phone connects to. Local data lives under `%APPDATA%\JotBunker\` as plain JSON files plus your backups and downloads.
 
-Pure TypeScript — no platform dependencies. Both mobile and desktop import from `@jotbunker/shared`. Contains:
+## How they talk
 
-- **Types** — `ListItem` (with optional tombstone fields), `Category`, the `AncestorSnapshot` shape, plus the wire-protocol message types
-- **Constants** — version, jot count (6), default categories, input modes
-- **Theme** — `buildTheme(hue, grayscale)` generates the full color palette
-- **Sync engine** — `SyncEngine`, `SyncPhaseManager`, `SyncTransport`, protocol types
-- **Three-way merge** — `mergeThreeWay(ancestor, phone, computer)` produces an authoritative merged snapshot plus a tie list and a count summary; `formatAppliedLogLine` writes the per-sync `[merge] applied ...` line
-- **Ancestor slice** — `createAncestorSlice` produces the post-sync snapshot store used as the third party in the merge
-- **Store utilities** — `createItemSlice` factory for lists/lockedLists; tombstone-aware (`deleted` / `deletedAt`), LWW-aware (`updatedAt`), fractional-position-ordered with `(position, id)` lexicographic tiebreak for cross-device determinism
+The computer listens on a port (default 8080). The phone connects directly over your local Wi-Fi. Every message after the initial key exchange is encrypted with NaCl. There is no cloud relay, no account server, and no internet requirement once the two devices are paired.
 
-## Mobile package (`packages/mobile/`)
+Sync is on demand. The phone never connects on its own; you tap a button. When the computer says SYNC NOW, both sides exchange state and run an automatic merge that keeps both sides' changes. Jot media (drawings, audio, images, files) flows one direction: phone to computer.
 
-Expo SDK 54 app with Expo Router navigation. Targets iOS and Android.
+## Key design choices
 
-- **Stores:** Zustand with AsyncStorage persistence; sync drives store updates from the engine, not via middleware
-- **Transport:** Direct WebSocket (`MobileTransport`) with NaCl encryption via `react-native-quick-crypto`
-- **Build profiles:** Dev (with expo-dev-client), Preview (standalone), Production (App Store). Controlled by `EAS_BUILD_PROFILE` env var → conditional autolinking exclusion in `app.config.ts`
+**Offline first.** The phone works fully without a connection. The computer works without a phone too. Sync is the bridge, not the source of truth.
 
-## Computer package (`packages/desktop/`)
+**No real-time sync.** Sync only runs when the user asks. This keeps the protocol simple and lets each device be the authority on its own data between syncs.
 
-Electron 35 with electron-vite. Windows only.
+**Same data shape on both sides.** Lists, locked lists, scratchpads, and categories all live in the shared package's data model so the merge has clean inputs.
 
-- **Main process:** WebSocket server (`syncServer.ts`), file cache, download/export, IPC handlers
-- **Renderer:** React 19 SPA with Zustand stores, IPC-based sync transport
-- **Preload:** `contextBridge` exposes ~35 whitelisted API methods (no raw `ipcRenderer`)
+**Two safety nets on top of automatic merge.** Most syncs need no human input. Two rare dialogs exist for the cases where the merge cannot resolve cleanly on its own. See [Sync](sync.md) and [Sync Protocol](sync-protocol.md).
 
-## Dependency strategy
+**One toggle for debug.** When something looks wrong, the computer's DEBUG LOGGING setting captures the full sync conversation to a per-connection log file. The phone always emits its events over the wire; the computer decides whether to write them to disk.
 
-- Use `npx expo install` for Expo packages (picks SDK-compatible versions)
-- Never use raw `npm install <package>` for Expo deps
-- Platform-specific fixes stay on the platform side (gradle for Android, Podfile for iOS)
-- No shared npm resolution hacks (`.npmrc`, `legacy-peer-deps`, postinstall)
+## Build picture
 
-## Build system
+The computer app builds with electron-vite and ships through electron-builder. The phone app builds with EAS Build (Expo's cloud build) for production releases. Both can run locally for development.
 
-| Platform | Tool | Trigger |
-|---|---|---|
-| iOS | EAS Build (`--local`) on Mac Mini | Manual — `~/build-{dev,preview,prod}-jotbunker.sh` |
-| Android (emulator) | `build-android-emu.ps1` + `adb reverse` + `npx expo start --localhost` | Manual |
-| Android (device) | `build-android.ps1` + `adb reverse` + `npx expo start --localhost` | Manual |
-| Computer | electron-vite + electron-builder | `npm run dist` locally, or push `v*` git tag for GitHub Actions CI |
-| Tests | Vitest 3 | `npm test` (runs shared, mobile, computer projects) |
+Tests run with Vitest across the shared, mobile, and computer projects.
 
-## Key design decisions
-
-- **Zustand everywhere** — same store pattern on both platforms, shared `createItemSlice` factory
-- **Sync via the engine** — `SyncEngine` orchestrates the wire protocol; `desktopPlatform.handleStateSync` runs the three-way merge against the persisted ancestor snapshot, applies the merged result locally, and ships the same snapshot to the phone via `sync_confirm.snapshot`. `mobilePlatform.handleSyncConfirm` applies the snapshot directly. Both sides commit a fresh ancestor and run tombstone GC after every successful sync.
-- **No `.ios.tsx`/`.android.tsx` files** — minimal `Platform.OS` checks, cross-platform by default
-- **Computer is the server** — phone initiates connections; computer listens on a configurable port
-- **Offline-first, automatic-merge sync** — both devices work independently; when you sync, an authoritative three-way merge produces a result that includes both sides' edits. The legacy "pick a side" dialog now fires only on genuine same-`updatedAt` field-level ties. Jots are phone → computer only and are not part of the merge.
-
----
-
-See also: [Sync Protocol](sync-protocol.md) | [Data Storage](data-storage.md)
+For deeper technical detail, see [Sync Protocol](sync-protocol.md) and [Data Storage](data-storage.md).

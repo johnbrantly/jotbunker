@@ -1,8 +1,6 @@
 # Phone Settings
 
-Full-screen modal with blur overlay. Changes are not applied until you tap **SAVE**. **CANCEL** discards all changes. The header shows the app icon and version number.
-
----
+A full-screen modal with a blur background. Changes do not apply until you tap **SAVE**. **CANCEL** discards them. The header shows the app icon and version number.
 
 ## Computer Sync
 
@@ -13,9 +11,9 @@ Controls the connection between your phone and computer.
 | Element | Type | Description |
 |---|---|---|
 | NETWORK SETTINGS | Button | Opens edit mode to enter connection details manually |
-| IP ADDRESS | Text input | Computer's local IP (e.g., `192.168.1.100`) |
+| IP ADDRESS | Text input | The computer's local IP (for example `192.168.1.100`) |
 | PORT | Text input (numeric) | WebSocket port, default `8080` |
-| PAIRING SECRET | Text input | UUID from the computer's QR code |
+| PAIRING SECRET | Text input | The UUID from the computer's QR code |
 | SCAN QR CODE | Button | Opens the camera to scan the computer's pairing QR code |
 | DONE | Button | Exits edit mode |
 
@@ -23,20 +21,18 @@ Controls the connection between your phone and computer.
 
 | Element | Type | Default | Description |
 |---|---|---|---|
-| Connection status | Display | — | Green dot = CONNECTED, yellow dot = CONNECTING, gray dot = DISCONNECTED |
-| NETWORK SETTINGS | Button | — | Opens edit mode (shows IP, port, secret, Unpair button) |
-| Keep awake | Toggle (OFF/ON) | OFF | Prevents phone device auto-lock while connected to computer |
-
-
+| Connection status | Display | (none) | Green dot = CONNECTED, yellow dot = CONNECTING, gray dot = DISCONNECTED |
+| NETWORK SETTINGS | Button | (none) | Opens edit mode (shows IP, port, secret, Unpair button) |
+| Keep awake | Toggle (OFF/ON) | OFF | Prevents the phone's auto-lock while connected to the computer |
 
 ### Keep awake sub-settings
 
-Only visible when Keep awake is ON.
+Visible only when Keep awake is ON.
 
 | Element | Type | Default | Description |
 |---|---|---|---|
-| Keep awake duration | Slider | 5 minutes | Range: 1–60 minutes. Disabled when "Always" is checked |
-| Always keep awake | Checkbox | OFF | Keeps screen on indefinitely while connected. Shows helper: "Keeps screen on while connected. Uses more battery." |
+| Keep awake duration | Slider | 5 minutes | Range 1 to 60 minutes. Disabled when "Always" is checked. |
+| Always keep awake | Checkbox | OFF | Keeps the screen on indefinitely while connected. Uses more battery. |
 
 ### Unpair
 
@@ -46,74 +42,55 @@ Visible in edit mode when paired. Shows a confirmation alert:
 > - Disconnect from computer sync
 > - Clear your pairing credentials
 >
-> You'll need to scan the computer QR code again to re-pair.
-
----
+> You will need to scan the computer QR code again to re-pair.
 
 ## Screen Lock Options
 
-Collapsed by default — shows a one-line summary (e.g., "LOCKED LISTS: ON (30s) · APP LOCK: OFF"). Tap **MODIFY** to expand.
+Collapsed by default; shows a one-line summary (for example "LOCKED LISTS: ON (30s) APP LOCK: OFF"). Tap **MODIFY** to expand.
 
 | Element | Type | Default | Description |
 |---|---|---|---|
-| Require Unlock for Locked Lists | Toggle (OFF/ON) | ON | Requires biometric/passcode to access the Locked Lists tab |
-| Locked Lists Unlocked For — MINUTES | Slider | varies | Range: 0–15. Only visible when lock is ON |
-| Locked Lists Unlocked For — SECONDS | Slider | varies | Range: 0–59. Only visible when lock is ON. Combined with minutes to set total unlock duration before auto-relock |
-| APP LOCK | Toggle (OFF/ON) | OFF | Requires biometric/passcode when app returns from background |
-| DONE | Button | — | Exits edit mode |
-
----
+| Require Unlock for Locked Lists | Toggle (OFF/ON) | ON | Requires biometric or passcode to access the Locked Lists tab |
+| Locked Lists Unlocked For: MINUTES | Slider | varies | Range 0 to 15. Visible only when lock is ON. |
+| Locked Lists Unlocked For: SECONDS | Slider | varies | Range 0 to 59. Visible only when lock is ON. Combined with minutes to set the total unlock duration. |
+| APP LOCK | Toggle (OFF/ON) | OFF | Requires biometric or passcode when the app returns from background |
+| DONE | Button | (none) | Exits edit mode |
 
 ## Accent Color
 
-Live color preview circle in the section header updates as you drag.
+A live preview circle in the section header updates as you drag the sliders.
 
 | Element | Type | Default | Description |
 |---|---|---|---|
-| Hue | Slider (rainbow gradient) | 205 | Range: 0–360°. Selects the base accent color |
-| Grayscale | Slider (color-to-gray gradient) | 75 | Range: 0–100. 0 = full color, 100 = monochrome |
-| RESTORE DEFAULT | Button | — | Resets hue to 205 and grayscale to 75 (desaturated steel blue). Shows a preview circle of the default color |
+| Hue | Slider | 205 | Range 0 to 360 degrees. The base accent color. |
+| Grayscale | Slider | 75 | Range 0 to 100. 0 is full color, 100 is monochrome. |
+| RESTORE DEFAULT | Button | (none) | Resets to desaturated steel blue (hue 205, grayscale 75) |
 
-See [Theming](theming.md) for how `buildTheme(hue, grayscale)` generates the full palette.
-
----
+See [Theming](theming.md) for how the palette is built.
 
 ## Font Size
 
-Pill toggles (S / M / L) for each text area.
+Three-size pill toggles for each text area.
 
 | Element | Options | Default | Description |
 |---|---|---|---|
-| SCRATCHPAD | S (13px) · M (16px) · L (20px) | M | Font size for scratchpad text editor |
-| LISTS | S (12px) · M (15px) · L (19px) | M | Font size for list items (applies to both Lists and Locked Lists) |
-
----
+| SCRATCHPAD | S / M / L | M | Font size in the scratchpad editor |
+| LISTS | S / M / L | M | Font size in lists (applies to both Lists and Locked Lists) |
 
 ## Categories
 
-Three independent category editors, each with a **MODIFY** button to expand. Each editor shows 6 numbered text inputs.
+Three independent category editors, each with a **MODIFY** button. Each editor has six numbered text inputs.
 
-| Editor | Store | Auth required? |
-|---|---|---|
-| SCRATCHPAD CATEGORIES | scratchpadStore | No |
-| LISTS CATEGORIES | listsStore | No |
-| LOCKED LISTS CATEGORIES | lockedListsStore | Yes — biometric/passcode prompt if lock is enabled |
+| Editor | Auth required? |
+|---|---|
+| SCRATCHPAD CATEGORIES | No |
+| LISTS CATEGORIES | No |
+| LOCKED LISTS CATEGORIES | Yes. Biometric or passcode prompt if Locked Lists lock is enabled. |
 
-**Input constraints:**
-- Auto-uppercase
-- Max length: 10 characters
-- Placeholder shows current label
+Category names auto-uppercase and have a maximum length of ten characters.
 
----
+## Sync debug logging
 
-## Debug Logging
-
-| Element | Type | Default | Description |
-|---|---|---|---|
-| DEBUG LOGGING | Toggle (OFF/ON) | OFF | Enables sync protocol logging. Logs are sent to the computer over the encrypted sync channel and written to `phone-sync.log` |
-
-See [Debug Logging](debug-logging.md) for details on log format and file locations.
-
----
+The phone has no debug-logging toggle. While connected, the phone always sends its sync events to the computer over the encrypted channel. The computer decides whether to persist them based on its own DEBUG LOGGING setting. See [Debug Logging](debug-logging.md).
 
 See also: [Phone App](phone-app-overview.md) | [Computer Settings](computer-settings.md) | [Theming](theming.md)

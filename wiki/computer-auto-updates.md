@@ -1,94 +1,57 @@
 # Auto-Updates
 
-The computer app checks for updates on launch and lets you download and install them from within the app. Updates are delivered via the generic HTTP provider at the configured update server URL, with GitHub Releases as a fallback.
+The computer app checks for updates when it launches. You can also check on demand. Both download and install are user-initiated; nothing happens on its own.
 
----
+## Startup check
 
-## Update check
+A few seconds after the app starts, it checks for a new version in the background. No dialog appears if you are on the latest version. If a new version is available, a dialog opens with DOWNLOAD and LATER buttons.
 
-- On launch, the app checks for updates **3 seconds after startup** (background, no UI)
-- Only one check per launch — no recurring schedule
-- If auto-update is disabled (see below), the startup check is skipped entirely
-- You can always check manually via **Help → Check for Updates**, even if auto-update is disabled
+You can disable the startup check from the Help menu (see below).
 
 ## Manual check
 
-When you click **Help → Check for Updates**:
+From the Help menu, click **Check for Updates**. The dialog reports one of:
 
 | Result | What you see |
 |---|---|
-| Checking | Modal: "Checking for Updates..." |
-| Update found | Modal: "Update {version} Available" with DOWNLOAD and LATER buttons |
-| Already current | Modal: "You're Up to Date" with current version (auto-dismisses after 4 seconds) |
-| Error | Modal: "Update Error" with error details |
-
-The startup check is silent — if you're already on the latest version, no modal appears.
+| Checking | "Checking for Updates..." |
+| Update available | "Update {version} Available" with DOWNLOAD and LATER buttons |
+| Already current | "You're Up to Date" with the current version (auto-dismisses after a few seconds) |
+| Error | "Update Error" with details |
 
 ## Update flow
 
 | Stage | What happens | What you see |
 |---|---|---|
-| Check | App queries the update server in the background | Nothing (startup) or "Checking..." (manual) |
-| Available | Update found, version sent to renderer | Modal: "Update {version} Available" with DOWNLOAD and LATER buttons |
-| Download | User clicks DOWNLOAD, update downloads in background | Modal: "Downloading {version}" with progress bar showing percentage and bytes transferred |
-| Downloaded | Download complete | Modal: "Update Ready" with RESTART and LATER buttons |
-| Install | User clicks RESTART | App quits, installer runs, app relaunches on new version |
+| Check | The app asks the update server | Nothing on startup, "Checking..." on manual check |
+| Available | A new version exists | "Update {version} Available" with DOWNLOAD and LATER |
+| Download | You click DOWNLOAD | "Downloading {version}" with a progress bar |
+| Downloaded | Download finished | "Update Ready" with RESTART and LATER |
+| Install | You click RESTART | The app closes, the installer runs, the new version starts |
 
-Both download and install are **user-initiated** — nothing happens automatically. `autoDownload` and `autoInstallOnAppQuit` are both set to `false`.
+LATER dismisses the dialog at any stage. The update stays available for next launch.
 
-Clicking **LATER** at any stage dismisses the modal. The update stays available for next launch.
+## Disabling auto-update on startup
 
-## Disabling auto-update
+Open the Help menu and check "Disable Auto-Update on Startup". This creates a small flag file at `%APPDATA%\JotBunker\autoupdate-disabled.flag`. Uncheck it to re-enable.
 
-**Help menu → "Disable Auto-Update on Startup"** (checkbox)
-
-When checked, a flag file is created at `%APPDATA%\JotBunker\autoupdate-disabled.flag`. The app reads this file on startup — if it exists, the 3-second update check is skipped.
-
-- Checking the box creates the flag file (disables startup check)
-- Unchecking deletes the flag file (re-enables startup check)
-- **Help → Check for Updates** still works regardless — it bypasses the flag
+The manual Check for Updates command always works, even when the startup check is disabled.
 
 ## Error handling
 
-If the update check or download fails (network issues, bad signature, etc.):
-- Error is logged to console
-- **Manual check:** error is shown in the update modal
-- **Startup check:** error is logged silently (no UI)
-- The app continues running normally
+If the check or download fails (network problems, bad signature, etc.):
 
-## Update modal
+- The error is logged to the system messages.
+- Manual checks show the error in the dialog.
+- Startup checks fail silently.
 
-Centered overlay with blur backdrop, theme-aware styling matching other app dialogs.
+The app keeps running normally.
 
-| State | Title | Body | Buttons |
-|---|---|---|---|
-| Checking | Checking for Updates... | — | — |
-| Available | Update {version} Available | A new version of JotBunker is available. | LATER / DOWNLOAD |
-| Downloading | Downloading {version} | Progress bar + percentage + bytes | LATER |
-| Downloaded | Update Ready | Restart JotBunker to apply the update. | LATER / RESTART |
-| Up to date | You're Up to Date | JotBunker {version} is the latest version. | OK (auto-dismiss 4s) |
-| Error | Update Error | Error message | OK |
+## Update sources
 
-## Update providers
+The app looks for updates in two places in order:
 
-The app checks for updates from two sources, in order:
-
-1. **Generic HTTP** — `https://jotbunker.com/updates` (primary)
-2. **GitHub Releases** — fallback if the generic server is unavailable
-
-## IPC channels
-
-| Channel | Direction | Purpose |
-|---|---|---|
-| `update:checking` | Main → Renderer | Manual check started — show spinner |
-| `update:available` | Main → Renderer | Notifies renderer of available version |
-| `update:download-progress` | Main → Renderer | Download progress (percent, speed, bytes) |
-| `update:downloaded` | Main → Renderer | Notifies renderer download is complete |
-| `update:up-to-date` | Main → Renderer | No update available (manual check only) |
-| `update:error` | Main → Renderer | Error during check/download (manual check only) |
-| `update:start-download` | Renderer → Main | User clicked DOWNLOAD |
-| `update:install` | Renderer → Main | User clicked RESTART → calls `quitAndInstall()` |
-
----
+1. `https://jotbunker.com/updates` (primary)
+2. GitHub Releases (fallback)
 
 See also: [Computer App](computer-app-overview.md) | [Computer Settings](computer-settings.md)

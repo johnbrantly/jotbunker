@@ -11,6 +11,7 @@ import {
   SyncEngine,
   setSyncLogEnabled,
   setSyncLogSink,
+  syncLog,
 } from '@jotbunker/shared';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MobileTransport } from './MobileTransport';
@@ -131,6 +132,10 @@ function buildMobilePlatform(
       // path for backward compat with pre-cutover senders.
       const mergedSnapshot = (msg as { snapshot?: typeof ss }).snapshot;
       if (mergedSnapshot) {
+        const liveLists = mergedSnapshot.lists.reduce((n, slot) => n + slot.filter((i) => !i.deleted).length, 0);
+        const liveLocked = mergedSnapshot.lockedLists.reduce((n, slot) => n + slot.filter((i) => !i.deleted).length, 0);
+        const liveSp = mergedSnapshot.scratchpad.filter((s) => s.content.length > 0).length;
+        syncLog('CONFIRM', `applied mode=${msg.mode} lists=${liveLists}/locked=${liveLocked}/sp=${liveSp}`);
         useListsStore.setState({
           items: mergedSnapshot.lists,
           categories: mergedSnapshot.listsCategories,
@@ -236,19 +241,19 @@ export function useSyncSetup(): void {
   const syncServerIp = useSettingsStore((s) => s.syncServerIp);
   const syncPort = useSettingsStore((s) => s.syncPort);
   const syncPairingSecret = useSettingsStore((s) => s.syncPairingSecret);
-  const debugLog = useSettingsStore((s) => s.debugLog);
 
-  setSyncLogEnabled(debugLog);
+  // Asymmetric debug architecture: phone always emits sync log events over
+  // the wire. The computer (single gate point) decides whether to persist
+  // them. No phone-side toggle.
+  setSyncLogEnabled(true);
 
   const engineRef = useRef<SyncEngine | null>(null);
   const transportRef = useRef<MobileTransport | null>(null);
 
-  // Debug log sink
+  // Always-on debug log sink: batch every 200ms while connected and ship as
+  // a debug_log wire message. Computer drops lines on the floor if its DEBUG
+  // LOGGING toggle is OFF.
   useEffect(() => {
-    if (!debugLog) {
-      setSyncLogSink(null);
-      return;
-    }
     const buffer: string[] = [];
     setSyncLogSink((line) => buffer.push(line));
     const timer = setInterval(() => {
@@ -260,7 +265,7 @@ export function useSyncSetup(): void {
       setSyncLogSink(null);
       clearInterval(timer);
     };
-  }, [debugLog]);
+  }, []);
 
   // Initialize transport and engine
   useEffect(() => {

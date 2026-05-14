@@ -17,15 +17,13 @@ import NetworkSyncSection from './settings/NetworkSyncSection'
 import FontSizeSection from './settings/FontSizeSection'
 import AccentColorSection from './settings/AccentColorSection'
 import DebugLoggingSection from './settings/DebugLoggingSection'
-import SyncHistorySection from './settings/SyncHistorySection'
 import FolderPathsSection from './settings/FolderPathsSection'
 
 interface Props {
   onClose: () => void
-  onOpenSyncLog: () => void
 }
 
-export default function SettingsModal({ onClose, onOpenSyncLog }: Props) {
+export default function SettingsModal({ onClose }: Props) {
   const { colors, confirmDialog: dialog, settingsPanel: sp } = useTheme()
   const scratchpadCats = useScratchpadStore((s) => s.categories)
   const updateScratchpadCats = useScratchpadStore((s) => s.updateCategories)
@@ -420,13 +418,6 @@ export default function SettingsModal({ onClose, onOpenSyncLog }: Props) {
             setDebugLogVal={setDebugLogVal}
             styles={styles}
             sp={sp}
-          />
-
-          <div style={styles.divider} />
-
-          <SyncHistorySection
-            onOpenSyncLog={() => { onClose(); onOpenSyncLog() }}
-            styles={styles}
           />
 
 

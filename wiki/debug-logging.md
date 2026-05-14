@@ -1,63 +1,34 @@
 # Debug Logging
 
-Toggle in settings. Writes **transport-level** sync protocol logs to disk — computer and phone logs side by side. Distinct from the always-on merge log line that lives in [System Messages](computer-system-messages.md).
+When sync misbehaves and you want to share what happened with support, turn on debug logging on the computer. The app then writes a log file for each sync session. Off by default.
 
----
+## How to turn it on
 
-## Two complementary log streams
+On the computer, open Settings, find DEBUG LOGGING, toggle it on, then click SAVE. From this point forward, every time your phone connects, the app writes a new log file. Toggle it off again to stop.
 
-JotBunker has two parallel log channels with different jobs:
+The phone has no toggle of its own. While the phone is connected to the computer, it sends its sync activity to the computer over the encrypted channel. The computer is the one that decides whether to save those events to disk.
 
-| Channel | When on | Captures | Use for |
-|---|---|---|---|
-| `system-messages.log` (always on) | Always | Non-sync app events: jot saves, downloads, backups, errors | "What did the app do recently?" |
-| `desktop-sync.log` (always-on sync events + toggle-gated transport) | Always logs sync events; transport-level events only when DEBUG LOGGING is on | Always: `[merge] applied ...`, `[ancestor] INFO ...`, `[tombstone]`, `[gc]`. When DEBUG LOGGING ON: also `[CONN]`, `[STATE]`, `[FILE]`, `[META]`, `[MANIFEST]`, `[ENGINE]`, `[PROTO]`, `[DOWNLOAD]` | "Did sync merge correctly?" + (with toggle on) "Why isn't the handshake/file transfer working?" |
-| `phone-sync.log` (toggle-gated) | OFF by default | Phone-side transport events received over wire | Phone-perspective transport-layer triage |
-
-The split exists because sync correctness signals are valuable always (privacy-safe counts and hashes only), while transport noise should be on-demand to keep the file readable when you're debugging.
-
-## How to enable
-
-On either device, go to Settings and toggle **Debug Logging** on. On the computer, this starts writing logs immediately. On the phone, the setting takes effect on the next sync connection.
-
-## Where logs go
-
-Computer writes to `%APPDATA%\JotBunker\debug-logs\`:
-
-- **`desktop-sync.log`** — events from the computer's perspective (connection, state exchange, phase transitions)
-- **`phone-sync.log`** — events from the phone's perspective (sent to computer over the encrypted sync channel)
-
-Both files are appended to each session (prefixed with `=== Session {timestamp} ===`).
-
-## Log format
+## Where the log file lives
 
 ```
-[SYNC HH:MM:SS.mmm][TAG] message
+%APPDATA%\JotBunker\debug-logs\sync-{timestamp}.log
 ```
 
-Tags indicate the subsystem:
-- `CONN` — connection events (phone connected/disconnected, key exchange, handshake)
-- `ENGINE` — phase transitions (idle → connecting → key_exchange → handshake → syncing → docked). The `syncing` phase is only entered by the computer briefly between key exchange and handshake; the phone goes directly from `handshake` to `docked`
-- `STATE` — state sync envelope events (what each side sent, tie-resolution outcome, cancel/timeout)
-- `CLEAR` — jot clear acks
-- `FILE` — single-file responses
-- `META` — single-jot metadata responses
-- `MANIFEST` — jot manifest (media ID summary)
-- `PROTO` — protocol validation failures
-- `DOWNLOAD` — bulk download flow
+The filename includes the timestamp of when the connection started. Each WebSocket connection produces one file. Multiple syncs during the same connection all end up in the same file. Closing the phone or disconnecting closes the file.
 
-## Reading the logs
+## Sending a log to support
 
-Enable debug logging on both devices, run a sync, and compare the two log files side by side to trace the full protocol flow.
+If support asks for a log of a sync that misbehaved:
 
-## Sync history
+1. Turn debug logging on.
+2. Reproduce the issue.
+3. Open `%APPDATA%\JotBunker\debug-logs\` and grab the most recent `sync-...log` file.
+4. Attach it to the support email.
 
-Sync history (the per-sync count summaries shown in the SyncLogDialog on the computer) is separate from both log streams. See [Sync History](computer-settings-sync-history.md).
+The log contains counts, ids, and resolution outcomes only. It never contains the text of your items, scratchpad content, or category labels.
 
 ## Performance
 
-Debug logging adds minimal overhead — it's string formatting and file writes. Leave it off in normal use; turn it on when diagnosing sync transport issues.
+When the toggle is off, nothing is written and there is no overhead. When it is on, the writes are tiny (a few KB per sync) and happen on the computer only.
 
----
-
-See also: [Sync](sync.md) | [Sync Protocol](sync-protocol.md) | [System Messages](computer-system-messages.md) | [Computer App](computer-app-overview.md)
+See also: [Sync](sync.md) | [Sync Protocol](sync-protocol.md) | [Computer App](computer-app-overview.md)

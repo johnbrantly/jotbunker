@@ -103,4 +103,31 @@ describe('settingsStore migration', () => {
     expect(result.autoConnectOnOpen).toBeUndefined()
     expect(result.autoSyncOnConnect).toBeUndefined()
   })
+
+  it('v2 → v3 migration strips removed debugLog key (phone-side toggle eliminated)', () => {
+    function migrateV3(persisted: any, version: number): any {
+      if (version === 0) {
+        persisted.setupComplete = true
+      }
+      if (version < 2) {
+        delete persisted.autoConnectOnOpen
+        delete persisted.autoSyncOnConnect
+      }
+      if (version < 3) {
+        delete persisted.debugLog
+      }
+      return persisted
+    }
+
+    const v2State = {
+      setupComplete: true,
+      syncServerIp: '192.168.1.5',
+      debugLog: true,
+    }
+
+    const result = migrateV3({ ...v2State }, 2)
+    expect(result.setupComplete).toBe(true)
+    expect(result.syncServerIp).toBe('192.168.1.5')
+    expect(result.debugLog).toBeUndefined()
+  })
 })

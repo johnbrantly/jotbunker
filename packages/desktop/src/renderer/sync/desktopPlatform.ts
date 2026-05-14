@@ -13,8 +13,6 @@ import {
   JOT_COUNT,
   syncLog,
   mergeThreeWay,
-  formatMergeSummary,
-  isMergeReportEmpty,
   formatAppliedLogLine,
 } from '@jotbunker/shared'
 import { useListsStore } from '../stores/listsStore'
@@ -24,7 +22,6 @@ import { useAncestorStore } from '../stores/ancestorStore'
 import { useScratchpadStore } from '../stores/scratchpadStore'
 import { useConsoleStore } from '../stores/consoleStore'
 import { useSyncConfirmStore } from '../stores/syncConfirmStore'
-import { useSyncHistoryStore } from '../stores/syncHistoryStore'
 import { useSaveStatusStore } from '../stores/saveStatusStore'
 import { processJotMetadata, processSingleJotFiles } from '../hooks/sync/jotMetadata'
 import type { DownloadResult } from '../hooks/sync/jotMetadata'
@@ -33,6 +30,14 @@ import { summarizeItems } from './syncUtils'
 import { rasterizeDrawing } from '../utils/rasterizeDrawing'
 
 export type SyncStatus = 'disconnected' | 'connected'
+
+/** Total live (non-tombstoned) item count across lists + lockedLists. */
+function countLive(snap: AncestorSnapshot): number {
+  let n = 0
+  for (const slot of snap.lists) for (const it of slot) if (!it.deleted) n++
+  for (const slot of snap.lockedLists) for (const it of slot) if (!it.deleted) n++
+  return n
+}
 
 /**
  * Phase 3: builds the ancestor snapshot from the current desktop store state
@@ -60,6 +65,10 @@ export interface DesktopPlatformDeps {
   setSyncStatus: (status: SyncStatus) => void
   setJotRefreshed: (v: boolean) => void
   setLastSyncTimestamp: (ts: number) => void
+  /** Opens the LARGE CHANGE DETECTED dialog. Resolves when the user picks. */
+  requestDivergenceChoice: (
+    counts: { case2: number; case3: number; ancestorLive: number },
+  ) => Promise<'computer' | 'phone' | 'cancel'>
 }
 
 export interface DesktopPlatformHandle {
@@ -67,7 +76,7 @@ export interface DesktopPlatformHandle {
 }
 
 export function buildDesktopPlatform(deps: DesktopPlatformDeps): DesktopPlatformHandle {
-  const { binaryQueue, lockedListsReady, setSyncStatus, setJotRefreshed, setLastSyncTimestamp } = deps
+  const { binaryQueue, lockedListsReady, setSyncStatus, setJotRefreshed, setLastSyncTimestamp, requestDivergenceChoice } = deps
   const api = window.electronAPI
   let hasBeenDocked = false
 
@@ -110,6 +119,7 @@ export function buildDesktopPlatform(deps: DesktopPlatformDeps): DesktopPlatform
 
     async handleStateSync(ss, send) {
       await lockedListsReady
+      const syncStartTime = Date.now()
       syncLog('STATE', `phone sent: lists=${summarizeItems(ss.lists)} lockedLists=${summarizeItems(ss.lockedLists)}`)
 
       // Build the three merge inputs: local desktop state, phone's wire
@@ -136,11 +146,69 @@ export function buildDesktopPlatform(deps: DesktopPlatformDeps): DesktopPlatform
         scratchpadCategories: ss.scratchpadCategories ?? scratchpadState.categories,
       }
       const localAncestor = useAncestorStore.getState().record?.snapshot ?? null
+
+      // Large-divergence gate. When 80%+ of ancestor-tracked live rows are
+      // missing from one side without tombstones, that side is almost certainly
+      // a fresh install or wiped device. mergeThreeWay would silently delete
+      // the surviving side's data via case 2/3 (items), and stomp categories +
+      // scratchpad via LWW because the fresh device's defaults / empty values
+      // appear as "changes" relative to the ancestor. Gate trip bypasses the
+      // merge entirely and applies the user-picked side's snapshot wholesale,
+      // which covers all three merge surfaces by construction.
+      if (localAncestor) {
+        let case2 = 0
+        let case3 = 0
+        let ancestorLive = 0
+        for (const section of ['lists', 'lockedLists'] as const) {
+          for (let slot = 0; slot < localAncestor[section].length; slot++) {
+            const aSlot = localAncestor[section][slot] ?? []
+            const pSlot = phoneAsSnapshot[section][slot] ?? []
+            const dSlot = localAsSnapshot[section][slot] ?? []
+            const pMap = new Map(pSlot.map((i) => [i.id, i]))
+            const dMap = new Map(dSlot.map((i) => [i.id, i]))
+            for (const a of aSlot) {
+              if (a.deleted) continue
+              ancestorLive++
+              const p = pMap.get(a.id)
+              const d = dMap.get(a.id)
+              if (!p && d && !d.deleted) case3++
+              else if (p && !p.deleted && !d) case2++
+            }
+          }
+        }
+        const r3 = ancestorLive > 0 ? case3 / ancestorLive : 0
+        const r2 = ancestorLive > 0 ? case2 / ancestorLive : 0
+        if (r3 >= 0.80 || r2 >= 0.80) {
+          const choice = await requestDivergenceChoice({ case2, case3, ancestorLive })
+          syncLog('DIVERGENCE', `case2=${case2}(${Math.round(r2 * 100)}%) case3=${case3}(${Math.round(r3 * 100)}%) ancestorLive=${ancestorLive} threshold=0.80 trip; user picked ${choice}`)
+          if (choice === 'cancel') {
+            send({ type: 'sync_cancel' })
+            syncLog('SYNC', `outcome=cancel duration=${Date.now() - syncStartTime}ms changed=0`)
+            return
+          }
+          const preLive = countLive(localAsSnapshot)
+          const winner = choice === 'computer' ? localAsSnapshot : phoneAsSnapshot
+          const mode = choice === 'computer' ? 'desktop-wins' : 'phone-wins'
+          useListsStore.setState({ items: winner.lists, categories: winner.listsCategories })
+          useLockedListsStore.setState({ items: winner.lockedLists, categories: winner.lockedListsCategories })
+          useScratchpadStore.setState({ contents: winner.scratchpad, categories: winner.scratchpadCategories })
+          send({ type: 'sync_confirm', mode, snapshot: winner, appliedAt: Date.now() })
+          this.setLastSyncTimestamp(Date.now())
+          const ancestorSnap = buildAncestorSnapshot()
+          useAncestorStore.getState().commit(ancestorSnap)
+          useListsStore.getState().gcTombstonesAgainst(ancestorSnap.lists)
+          useLockedListsStore.getState().gcTombstonesAgainst(ancestorSnap.lockedLists)
+          syncLog('SYNC', `outcome=divergence-${choice} duration=${Date.now() - syncStartTime}ms changed=${Math.abs(countLive(winner) - preLive)}`)
+          return
+        }
+      }
+
       const mergedResult = mergeThreeWay(localAncestor, phoneAsSnapshot, localAsSnapshot)
 
       // Tie-only dialog. The merge auto-resolves all non-tie cases (case 4/5
       // adds, case 7/8 one-sided edits, case 9 different-fields, same-field
       // LWW). Only genuine same-field same-`updatedAt` ties surface.
+      const preLive = countLive(localAsSnapshot)
       let finalSnapshot = mergedResult.snapshot
       if (mergedResult.ties.length > 0) {
         const resolution = await useSyncConfirmStore
@@ -149,6 +217,7 @@ export function buildDesktopPlatform(deps: DesktopPlatformDeps): DesktopPlatform
         if (resolution.kind === 'cancelled') {
           syncLog('STATE', 'User cancelled tie resolution; aborting sync')
           send({ type: 'sync_cancel' })
+          syncLog('SYNC', `outcome=cancel duration=${Date.now() - syncStartTime}ms changed=0`)
           return
         }
         finalSnapshot = resolution.snapshot
@@ -174,19 +243,10 @@ export function buildDesktopPlatform(deps: DesktopPlatformDeps): DesktopPlatform
       useListsStore.getState().gcTombstonesAgainst(ancestorSnapshot.lists)
       useLockedListsStore.getState().gcTombstonesAgainst(ancestorSnapshot.lockedLists)
 
-      // Sync History entry. Skip empty merges (all counts zero) so the
-      // history doesn't fill up with "no changes" entries.
-      if (!isMergeReportEmpty(mergedResult.summary)) {
-        useSyncHistoryStore.getState().addMergeEntry(
-          formatMergeSummary(mergedResult.summary),
-          mergedResult.summary,
-        )
-      }
-
-      // Applied-result log line. Routes to desktop-sync.log (always-on, not
-      // gated by DEBUG LOGGING). system-messages.log is reserved for non-sync
-      // app events. Privacy: counts only, no item text.
-      window.electronAPI.sendDebugLog(formatAppliedLogLine(finalSnapshot, mergedResult.summary))
+      // Applied-result log line. Routes through syncLog, gated by DEBUG
+      // LOGGING. Privacy: counts only, no item text.
+      syncLog('MERGE', formatAppliedLogLine(finalSnapshot, mergedResult.summary).replace(/^\[merge\] /, ''))
+      syncLog('SYNC', `outcome=merge duration=${Date.now() - syncStartTime}ms changed=${Math.abs(countLive(finalSnapshot) - preLive)}`)
     },
 
     async handleJotRefreshResponse(data) {

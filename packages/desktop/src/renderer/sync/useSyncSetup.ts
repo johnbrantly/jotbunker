@@ -16,6 +16,9 @@ import { requestDownload } from '../hooks/sync/jotMetadata'
 
 export type { SyncStatus } from './desktopPlatform'
 
+export type DivergenceCounts = { case2: number; case3: number; ancestorLive: number }
+export type DivergenceChoice = 'computer' | 'phone' | 'cancel'
+
 export interface DesktopSyncState {
   syncStatus: SyncStatus
   phoneDeviceId: string | null
@@ -27,6 +30,10 @@ export interface DesktopSyncState {
   isTransferring: boolean
   jotRefreshed: boolean
   lastSyncTimestamp: number
+  /** When set, App.tsx renders the "LARGE CHANGE DETECTED" dialog. Cleared
+   *  when the user picks computer/phone/cancel via `respondDivergence`. */
+  pendingDivergence: DivergenceCounts | null
+  respondDivergence: (choice: DivergenceChoice) => void
   requestDownload: (jotIds: number[]) => void
   requestClear: (jotIds: number[]) => void
   requestRefresh: () => void
@@ -39,6 +46,28 @@ export function useDesktopSync(): DesktopSyncState {
   const [binarySyncStatus, setBinarySyncStatus] = useState<string | null>(null)
   const [jotRefreshed, setJotRefreshed] = useState(false)
   const [lastSyncTimestamp, setLastSyncTimestamp] = useState(0)
+
+  // Pending large-divergence dialog. Set when the gate in
+  // desktopPlatform.handleStateSync trips its 80% ratio. Cleared on user pick.
+  const [pendingDivergence, setPendingDivergence] = useState<{
+    counts: DivergenceCounts
+    resolve: (c: DivergenceChoice) => void
+  } | null>(null)
+
+  const requestDivergenceChoice = useCallback(
+    (counts: DivergenceCounts) =>
+      new Promise<DivergenceChoice>((resolve) => {
+        setPendingDivergence({ counts, resolve })
+      }),
+    [],
+  )
+
+  const respondDivergence = useCallback((choice: DivergenceChoice) => {
+    setPendingDivergence((cur) => {
+      cur?.resolve(choice)
+      return null
+    })
+  }, [])
 
   const debugLog = useSettingsStore((s) => s.debugLog)
   setSyncLogEnabled(debugLog)
@@ -84,6 +113,7 @@ export function useDesktopSync(): DesktopSyncState {
       setSyncStatus,
       setJotRefreshed,
       setLastSyncTimestamp,
+      requestDivergenceChoice,
     })
 
     const engine = new SyncEngine(transport, handle.platform, { serverMode: true })
@@ -126,6 +156,8 @@ export function useDesktopSync(): DesktopSyncState {
     isTransferring,
     jotRefreshed,
     lastSyncTimestamp,
+    pendingDivergence: pendingDivergence?.counts ?? null,
+    respondDivergence,
     requestDownload: handleRequestDownload,
     requestClear: handleRequestClear,
     requestRefresh: handleRequestRefresh,
