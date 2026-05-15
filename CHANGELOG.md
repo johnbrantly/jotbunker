@@ -1,5 +1,9 @@
 # JotBunker Changelog
 
+## [v1.1.2] - 2026-05-15
+
+- iOS App Store submission prep: added app-specific Info.plist permission descriptions for Local Network (sync to your paired computer), Microphone (audio jots), and Photo Library (image attachments). Each prompt now names the app, names the action, and reiterates the no-cloud promise instead of showing a generic OS default.
+
 ## [v1.1.1] - 2026-05-14
 
 - Sync: large-divergence safety gate. If 80% or more of the ancestor's items are missing from one side (fresh phone, post-restore, wiped device), the LARGE CHANGE DETECTED dialog appears instead of merging silently. Pick USE COMPUTER DATA or USE PHONE DATA and the chosen device's snapshot lands wholesale on both sides. 

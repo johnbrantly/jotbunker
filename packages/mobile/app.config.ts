@@ -9,7 +9,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   name: 'JotBunker',
   slug: 'jotbunker',
-  version: '1.1.1',
+  version: '1.1.2',
   orientation: 'portrait',
   icon: './assets/icon.png',
   userInterfaceStyle: 'dark',
@@ -26,6 +26,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     infoPlist: {
       NSFaceIDUsageDescription: 'JotBunker uses Face ID to protect your Locked Lists.',
       NSCameraUsageDescription: 'JotBunker uses the camera to scan QR codes for network pairing.',
+      NSMicrophoneUsageDescription: 'JotBunker records audio jots when you tap the record button. Recordings stay on your device or sync to your paired computer over your local Wi-Fi.',
+      NSPhotoLibraryUsageDescription: 'JotBunker attaches photos from your library to jots. Photos stay on your device or sync to your paired computer over your local Wi-Fi.',
+      NSLocalNetworkUsageDescription: 'JotBunker connects to your paired computer over your local Wi-Fi to sync your notes. Your data never leaves your network.',
       ITSAppUsesNonExemptEncryption: false,
     },
   },
