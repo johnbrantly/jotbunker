@@ -117,6 +117,16 @@ export function buildDesktopPlatform(deps: DesktopPlatformDeps): DesktopPlatform
       send(stateSync)
     },
 
+    // Phone asked us to run a sync (it just connected with syncOnConnect on).
+    // Honor it exactly like the user clicking SYNC NOW: drive the authoritative
+    // merge by sending our state. Await lockedLists hydration first — the phone's
+    // request can arrive immediately on connect, before the store has rehydrated.
+    async handleSyncRequest(send) {
+      await lockedListsReady
+      syncLog('SYNC', 'phone requested sync on connect')
+      this.sendStateSync(send)
+    },
+
     async handleStateSync(ss, send) {
       await lockedListsReady
       const syncStartTime = Date.now()

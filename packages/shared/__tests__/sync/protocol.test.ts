@@ -26,6 +26,7 @@ describe('parseMessage', () => {
     ['state_sync', { lists: [], lockedLists: [], listsCategories: [], lockedListsCategories: [], since: 0 }],
     ['sync_confirm', { mode: 'desktop-wins' }],
     ['sync_cancel', {}],
+    ['sync_request', {}],
   ]
 
   it.each(validMessages)('parses valid "%s" message', (type, fields) => {

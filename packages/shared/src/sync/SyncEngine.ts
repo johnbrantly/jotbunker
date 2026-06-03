@@ -12,6 +12,7 @@ import type {
   JotMetaRequest,
   JotMetaResponse,
   SyncConfirm,
+  SyncRequest,
 } from './protocol'
 import type { SyncTransport } from './SyncTransport'
 import { syncLog } from './syncLog'
@@ -63,6 +64,8 @@ export interface DesktopPlatformHandlers {
   handleDownloadComplete(data: unknown): void
   handleJotManifest?(data: JotManifest): void
   handleJotMetaResponse?(data: JotMetaResponse): Promise<void>
+  /** Phone asked us to run a sync (sent on connect when syncOnConnect is on). */
+  handleSyncRequest(send: (msg: SyncWireMessage) => boolean): Promise<void>
   onStateSyncComplete?(): void
 }
 
@@ -251,6 +254,12 @@ export class SyncEngine {
       case 'sync_cancel':
         if (this.isMobile()) {
           this.platform.handleSyncCancel()
+        }
+        break
+
+      case 'sync_request':
+        if (this.isDesktop()) {
+          await this.platform.handleSyncRequest((m) => this.transport.send(m))
         }
         break
 

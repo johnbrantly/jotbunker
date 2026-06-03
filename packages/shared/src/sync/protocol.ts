@@ -57,7 +57,8 @@ export type SyncMessageType =
   | 'heartbeat'
   | 'debug_log'
   | 'sync_confirm'
-  | 'sync_cancel';
+  | 'sync_cancel'
+  | 'sync_request';
 
 export interface KeyInit {
   type: 'key_init';
@@ -216,6 +217,16 @@ export interface SyncCancel {
   type: 'sync_cancel';
 }
 
+/**
+ * Phone → desktop. An explicit "run a sync now" trigger, sent right after the
+ * phone connects when its `syncOnConnect` setting is on. The desktop honors it
+ * by driving the normal authoritative merge (identical to clicking SYNC NOW).
+ * Empty payload — the request itself is the signal.
+ */
+export interface SyncRequest {
+  type: 'sync_request';
+}
+
 export type SyncWireMessage =
   | KeyInit
   | Handshake
@@ -235,7 +246,8 @@ export type SyncWireMessage =
   | Heartbeat
   | DebugLogMessage
   | SyncConfirm
-  | SyncCancel;
+  | SyncCancel
+  | SyncRequest;
 
 // ── Helpers ──
 
@@ -268,6 +280,7 @@ const MESSAGE_VALIDATORS: Record<SyncMessageType, (m: Record<string, unknown>) =
     && (m.snapshot === undefined || isObj(m.snapshot))
     && (m.appliedAt === undefined || isNum(m.appliedAt)),
   sync_cancel:           ()  => true,
+  sync_request:          ()  => true,
   state_sync:            (m) => isArr(m.lists) && isArr(m.lockedLists) && isArr(m.listsCategories) && isArr(m.lockedListsCategories) && isNum(m.since),
 };
 
@@ -291,6 +304,7 @@ const VALID_TYPES: Set<string> = new Set<SyncMessageType>([
   'debug_log',
   'sync_confirm',
   'sync_cancel',
+  'sync_request',
 ]);
 
 export function parseMessage(raw: string): SyncWireMessage | null {

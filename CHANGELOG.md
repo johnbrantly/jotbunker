@@ -1,5 +1,11 @@
 # JotBunker Changelog
 
+## [v1.1.3] - 2026-06-03
+
+- Sync: tapping **Sync** on the phone now connects *and* starts a sync automatically by default. Previously it only connected — you still had to click SYNC NOW on the computer for anything to actually sync. A new phone setting "Sync on connect" (default ON, under Computer Sync) lets you turn this off to connect only.
+- Sync: the LARGE CHANGE DETECTED dialog now auto-cancels after 60 seconds, matching the tie-resolution dialog. Previously it waited indefinitely. So a phone-initiated sync that trips the 80% large-divergence gate now cancels cleanly if you walk away without picking a side- both devices' data is left untouched.
+- Pairing: fixed the IP address and pairing secret fields not filling in after scanning the pairing QR code from inside the network settings screen. This was cosmetic only- pairing and sync always worked; the fields just showed their placeholder text until you reopened settings.
+
 ## [v1.1.2] - 2026-05-15
 
 - iOS App Store submission prep: added app-specific Info.plist permission descriptions for Local Network (sync to your paired computer), Microphone (audio jots), and Photo Library (image attachments). Each prompt now names the app, names the action, and reiterates the no-cloud promise instead of showing a generic OS default.

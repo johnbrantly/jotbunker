@@ -62,6 +62,11 @@ function buildMobilePlatform(
   // Saved desktop state_sync — held until sync_confirm arrives
   let pendingDesktopState: StateSync | null = null;
   let keepAwakeTimer: ReturnType<typeof setTimeout> | null = null;
+  // Fire `sync_request` only once per connect session. onConnectionStatusChange
+  // ('connected') runs twice per sync (initial connect + after the merge's
+  // state_sync), so without this guard the auto-sync would loop. Reset on
+  // disconnect.
+  let syncRequestSent = false;
 
   return {
     deviceId,
@@ -206,6 +211,11 @@ function buildMobilePlatform(
 
     onConnectionStatusChange(status) {
       const { dockState, setDockState } = useSyncStatusStore.getState();
+      // Re-arm the once-per-connect sync trigger on any non-connected state
+      // (connecting / unreachable / idle). A manual undock emits 'idle' only
+      // (MobileTransport suppresses the close callback on an intentional
+      // disconnect), so we can't rely on 'unreachable' alone.
+      if (status !== 'connected') syncRequestSent = false;
       if (status === 'connected') {
         setDockState('docked');
         // Keep-awake: activate if enabled
@@ -219,6 +229,13 @@ function buildMobilePlatform(
               keepAwakeTimer = null;
             }, settings.keepAwakeMinutes * 60_000);
           }
+        }
+        // Sync-on-connect: tapping Sync on the phone connects; if the setting is
+        // on, immediately ask the desktop to run one authoritative sync. The
+        // guard keeps this to a single request per connect session.
+        if (!syncRequestSent && settings.syncOnConnect) {
+          syncRequestSent = true;
+          transport.send({ type: 'sync_request' });
         }
       } else if (status === 'unreachable') {
         pendingDesktopState = null;

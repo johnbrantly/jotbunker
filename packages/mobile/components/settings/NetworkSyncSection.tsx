@@ -1,4 +1,4 @@
-import React, { useState, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, PanResponder, StyleSheet } from 'react-native';
 import { DEFAULT_SYNC_PORT } from '@jotbunker/shared';
 import { useRouter } from 'expo-router';
@@ -98,6 +98,8 @@ export default forwardRef<NetworkSyncSaveHandle, Props>(function NetworkSyncSect
   const setSyncPairingSecret = useSettingsStore((s) => s.setSyncPairingSecret);
   const dockState = useSyncStatusStore((s) => s.dockState);
   const undockFn = useSyncStatusStore((s) => s.undockFn);
+  const syncOnConnect = useSettingsStore((s) => s.syncOnConnect);
+  const setSyncOnConnect = useSettingsStore((s) => s.setSyncOnConnect);
   const keepAwakeEnabled = useSettingsStore((s) => s.keepAwakeEnabled);
   const setKeepAwakeEnabled = useSettingsStore((s) => s.setKeepAwakeEnabled);
   const keepAwakeMinutes = useSettingsStore((s) => s.keepAwakeMinutes);
@@ -110,6 +112,16 @@ export default forwardRef<NetworkSyncSaveHandle, Props>(function NetworkSyncSect
   const [portVal, setPortVal] = useState(String(syncPort));
   const [secretVal, setSecretVal] = useState(syncPairingSecret);
   const [syncEditing, setSyncEditing] = useState(false);
+
+  // Re-sync the editable fields when the store changes underneath us — e.g.
+  // after scanning the pairing QR from inside this screen, which writes the
+  // values into the store while this component stays mounted. Without this the
+  // inputs keep showing their initial (empty) placeholders. Safe: typing only
+  // mutates local state, and the store changes externally only via scan-qr or
+  // save() (after which store == local, so the effect is a no-op).
+  useEffect(() => { setIpVal(syncServerIp); }, [syncServerIp]);
+  useEffect(() => { setPortVal(String(syncPort)); }, [syncPort]);
+  useEffect(() => { setSecretVal(syncPairingSecret); }, [syncPairingSecret]);
 
   useImperativeHandle(ref, () => ({
     save: () => {
@@ -277,6 +289,24 @@ export default forwardRef<NetworkSyncSaveHandle, Props>(function NetworkSyncSect
               <TouchableOpacity style={[styles.modifyBtn, { marginTop: 4, marginBottom: 12 }]} onPress={() => setSyncEditing(true)}>
                 <Text style={styles.modifyBtnText}>NETWORK SETTINGS</Text>
               </TouchableOpacity>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
+                <Text style={{ fontSize: 13, color: colors.textSecondary }}>Sync on connect</Text>
+                <View style={{ flexDirection: 'row', gap: 6 }}>
+                  {(['OFF', 'ON'] as const).map((label) => {
+                    const active = label === 'ON' ? syncOnConnect : !syncOnConnect;
+                    return (
+                      <TouchableOpacity
+                        key={label}
+                        onPress={() => setSyncOnConnect(label === 'ON')}
+                        style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, borderWidth: 1, borderColor: active ? colors.primary : '#444', backgroundColor: active ? colors.primary + '25' : 'transparent' }}
+                      >
+                        <Text style={{ fontSize: 10, fontWeight: '600', color: active ? colors.primary : '#666' }}>{label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+              <Text style={{ fontSize: 9, color: '#666', marginTop: 2 }}>Start a sync automatically when you tap Sync. Off = connect only.</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
                 <Text style={{ fontSize: 13, color: colors.textSecondary }}>Keep awake</Text>
                 <View style={{ flexDirection: 'row', gap: 6 }}>

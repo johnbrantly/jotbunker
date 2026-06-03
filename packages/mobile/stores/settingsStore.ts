@@ -12,6 +12,8 @@ interface SettingsState {
   setSyncPort: (port: number) => void;
   syncPairingSecret: string;
   setSyncPairingSecret: (secret: string) => void;
+  syncOnConnect: boolean;
+  setSyncOnConnect: (v: boolean) => void;
   lockedListsLockEnabled: boolean;
   setLockedListsLockEnabled: (v: boolean) => void;
   lockedListsLockTimeout: number;
@@ -45,6 +47,8 @@ export const useSettingsStore = create<SettingsState>()(
       setSyncPort: (port) => set({ syncPort: port }),
       syncPairingSecret: '',
       setSyncPairingSecret: (secret) => set({ syncPairingSecret: secret }),
+      syncOnConnect: true,
+      setSyncOnConnect: (v) => set({ syncOnConnect: v }),
       lockedListsLockEnabled: true,
       setLockedListsLockEnabled: (v) => set({ lockedListsLockEnabled: v }),
       lockedListsLockTimeout: DEFAULT_LOCKED_LISTS_LOCK_MS,
